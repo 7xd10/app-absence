@@ -3,6 +3,7 @@ EuroPresence - Application Factory
 Université Euro-Méditerranéenne de Fès (UEMF)
 """
 import os
+from urllib.parse import urlparse
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -17,6 +18,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _is_local_redis(url: str | None) -> bool:
+    if not url:
+        return False
+    try:
+        host = urlparse(url).hostname
+    except Exception:
+        return False
+    return host in {"localhost", "127.0.0.1", "::1"}
+
 # ── Extensions (instanciées sans app) ──────────────────────────────────────
 db = SQLAlchemy()
 migrate = Migrate()
@@ -29,6 +40,14 @@ limiter = Limiter(key_func=get_remote_address)
 def create_app(config_name: str = "development") -> Flask:
     """Application factory."""
     app = Flask(__name__)
+
+    redis_url = os.environ.get("REDIS_URL")
+    ratelimit_storage_uri = os.environ.get("RATELIMIT_STORAGE_URI")
+    if not ratelimit_storage_uri:
+        if not redis_url or _is_local_redis(redis_url):
+            ratelimit_storage_uri = "memory://"
+        else:
+            ratelimit_storage_uri = redis_url
 
     # ── Configuration ──────────────────────────────────────────────────────
     app.config.update(
@@ -56,7 +75,7 @@ def create_app(config_name: str = "development") -> Flask:
         MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD"),
         MAIL_DEFAULT_SENDER=os.environ.get("MAIL_DEFAULT_SENDER", "EuroPresence <noreply@europresence.ma>"),
         # Redis / Limiter
-        RATELIMIT_STORAGE_URI=os.environ.get("REDIS_URL", "memory://"),
+        RATELIMIT_STORAGE_URI=ratelimit_storage_uri,
         # App
         APP_NAME="EuroPresence",
         UNIVERSITY_NAME="Université Euro-Méditerranéenne de Fès",
@@ -77,11 +96,10 @@ def create_app(config_name: str = "development") -> Flask:
     bcrypt.init_app(app)
     mail.init_app(app)
     limiter.init_app(app)
-    redis_url = os.environ.get("REDIS_URL")
     socketio.init_app(
         app,
         cors_allowed_origins="*",
-        message_queue=redis_url if redis_url and redis_url != "redis://localhost:6379/0" else None,
+        message_queue=redis_url if redis_url and not _is_local_redis(redis_url) else None,
         async_mode="threading"
     )
     CORS(app, resources={r"/api/*": {"origins": "*"}})
