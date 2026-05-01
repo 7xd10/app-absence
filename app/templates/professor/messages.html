@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Messages – EuroPresence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen bg-slate-50">
+  {% include "partials/sidebar_prof.html" %}
+  <div class="flex-1 flex flex-col min-w-0">
+    {% include "partials/topbar.html" %}
+    <main class="flex-1 p-4 lg:p-8 overflow-auto" x-data="{ showForm: false, sendToGroup: true }">
+
+      <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+        <div>
+          <h2 class="font-display font-bold text-2xl text-slate-800">Messages & Communications</h2>
+          <p class="text-slate-500 text-sm mt-1">{{ messages | length }} message(s) envoyé(s)</p>
+        </div>
+        <button @click="showForm = !showForm" class="btn-primary">+ Nouveau message</button>
+      </div>
+
+      <!-- Compose form -->
+      <div x-show="showForm" x-transition class="bg-white rounded-2xl shadow-card border border-blue-soft/40 p-6 mb-6">
+        <h3 class="font-semibold text-slate-800 mb-5">Composer un message</h3>
+        <form method="POST" action="{{ url_for('professor.send_message') }}">
+          <!-- Target -->
+          <div class="mb-4">
+            <div class="flex gap-3 mb-3">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="_target" value="group" x-model="sendToGroup" class="accent-primary" :checked="sendToGroup"/>
+                <span class="text-sm font-medium text-slate-700">Groupe entier</span>
+              </label>
+            </div>
+            <div x-show="sendToGroup">
+              <select name="group_id" class="input-field">
+                <option value="">Sélectionner un groupe</option>
+                {% for group in groups %}
+                <option value="{{ group.id }}">{{ group.name }} ({{ group.student_count }} étudiants)</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Sujet</label>
+              <input type="text" name="subject" placeholder="Objet du message" class="input-field"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Type</label>
+              <select name="message_type" class="input-field">
+                <option value="info">💬 Information</option>
+                <option value="warning">⚠️ Avertissement</option>
+                <option value="alert">🚨 Alerte urgente</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Template messages -->
+          <div class="mb-3">
+            <p class="text-xs font-semibold text-slate-500 mb-2">Modèles rapides :</p>
+            <div class="flex flex-wrap gap-2">
+              {% for tpl in [
+                ('Absence excessive', 'Votre taux d\'absence dépasse le seuil autorisé. Merci de régulariser votre situation.'),
+                ('Retard fréquent', 'Vos retards répétés impactent votre taux de présence. Merci d\'être ponctuel(le).'),
+                ('Rappel cours', 'Rappel : cours obligatoire demain. Votre présence est requise.'),
+              ] %}
+              <button type="button" onclick="document.querySelector('[name=body]').value='{{ tpl[1] }}'; document.querySelector('[name=subject]').value='{{ tpl[0] }}';"
+                      class="text-xs bg-blue-soft text-primary rounded-lg px-3 py-1.5 hover:bg-blue-mid transition-colors font-medium">
+                {{ tpl[0] }}
+              </button>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Message *</label>
+            <textarea name="body" required rows="4" placeholder="Contenu du message..."
+                      class="input-field resize-none"></textarea>
+          </div>
+
+          <div class="flex items-center gap-3 mb-5">
+            <input type="checkbox" name="send_email" id="send_email" class="accent-primary w-4 h-4"/>
+            <label for="send_email" class="text-sm text-slate-600">
+              📧 Envoyer également par email aux étudiants
+            </label>
+          </div>
+
+          <div class="flex gap-3">
+            <button type="submit" class="btn-primary text-sm !py-2.5">📤 Envoyer</button>
+            <button type="button" @click="showForm = false"
+                    class="border-2 border-slate-200 text-slate-600 rounded-xl py-2.5 px-5 text-sm font-semibold hover:bg-slate-50">
+              Annuler
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Messages history -->
+      <div class="bg-white rounded-2xl shadow-card border border-blue-soft/40 overflow-hidden">
+        <div class="px-6 py-4 border-b border-blue-soft/40">
+          <h3 class="font-semibold text-slate-800">Historique des messages</h3>
+        </div>
+        {% if messages %}
+        <div class="divide-y divide-blue-soft/40">
+          {% for msg in messages %}
+          <div class="px-6 py-4 flex items-start gap-4">
+            <span class="text-xl flex-shrink-0 mt-0.5">
+              {% if msg.message_type == 'warning' %}⚠️{% elif msg.message_type == 'alert' %}🚨{% else %}💬{% endif %}
+            </span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-start justify-between gap-2">
+                <p class="font-medium text-slate-800 text-sm">{{ msg.subject or 'Sans sujet' }}</p>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  {% if msg.is_email_sent %}
+                  <span class="text-xs bg-green-50 text-accent px-2 py-0.5 rounded-full">📧 Email envoyé</span>
+                  {% endif %}
+                  <span class="text-xs text-slate-400">{{ msg.created_at.strftime('%d/%m %H:%M') }}</span>
+                </div>
+              </div>
+              <p class="text-slate-500 text-sm mt-1 line-clamp-2">{{ msg.body }}</p>
+              <div class="flex gap-3 mt-1.5 text-xs text-slate-400">
+                {% if msg.recipient %}<span>À : {{ msg.recipient.full_name }}</span>{% endif %}
+                {% if msg.group_id %}<span>Groupe : {{ msg.group_id[:8] }}...</span>{% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="py-16 text-center">
+          <div class="text-5xl mb-3">💬</div>
+          <p class="text-slate-500">Aucun message envoyé</p>
+        </div>
+        {% endif %}
+      </div>
+
+    </main>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Historique – EuroPresence{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-slate-50">
+  <div class="gradient-primary text-white px-6 py-4 shadow">
+    <div class="max-w-2xl mx-auto flex items-center gap-4">
+      <a href="{{ url_for('student.dashboard') }}" class="hover:bg-white/20 rounded-lg p-1.5 transition-colors">←</a>
+      <h1 class="font-display font-bold">Historique des présences</h1>
+    </div>
+  </div>
+  <div class="max-w-2xl mx-auto px-4 py-6">
+    <div class="bg-white rounded-2xl shadow-card border border-blue-soft/40 overflow-hidden">
+      {% if attendances %}
+      <div class="divide-y divide-blue-soft/40">
+        {% for att in attendances %}
+        <div class="flex items-center gap-4 px-5 py-4">
+          <span class="{% if att.status == 'present' %}badge-present{% else %}badge-absent{% endif %} flex-shrink-0">
+            {% if att.status == 'present' %}✅{% else %}❌{% endif %}
+          </span>
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-slate-800 truncate text-sm">{{ att.session.title }}</p>
+            <div class="flex gap-3 text-xs text-slate-400 mt-0.5 flex-wrap">
+              <span>{{ att.created_at.strftime('%d/%m/%Y') }}</span>
+              {% if att.scanned_at %}<span>⏰ {{ att.scanned_at.strftime('%H:%M') }}</span>{% endif %}
+              {% if att.distance_meters %}<span>📍 {{ att.distance_meters | round | int }}m</span>{% endif %}
+            </div>
+          </div>
+          <span class="{% if att.status == 'present' %}text-accent{% else %}text-red-400{% endif %} font-semibold text-sm flex-shrink-0">
+            {{ att.status | capitalize }}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="py-16 text-center">
+        <div class="text-5xl mb-3">📋</div>
+        <p class="text-slate-500">Aucun historique</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

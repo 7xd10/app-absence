@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }} – EuroPresence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen bg-slate-50">
+  {% include "partials/sidebar_prof.html" %}
+  <div class="flex-1 flex flex-col min-w-0">
+    {% include "partials/topbar.html" %}
+    <main class="flex-1 p-4 lg:p-8 overflow-auto" x-data="{ showAddForm: false, showImport: false }">
+
+      <!-- Breadcrumb + Header -->
+      <div class="flex items-center gap-2 text-sm text-slate-400 mb-6">
+        <a href="{{ url_for('professor.groups') }}" class="hover:text-primary">Groupes</a>
+        <span>›</span>
+        <span class="text-slate-700 font-medium">{{ group.name }}</span>
+      </div>
+
+      <!-- Group info banner -->
+      <div class="gradient-primary rounded-2xl p-6 mb-6 text-white shadow-glow">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 class="font-display font-bold text-2xl mb-1">{{ group.name }}</h2>
+            <p class="text-white/70">
+              {{ group.filiere or '' }}{% if group.level %} · {{ group.level }}{% endif %}
+              {% if group.academic_year %} · {{ group.academic_year }}{% endif %}
+            </p>
+            {% if group.description %}
+            <p class="text-white/60 text-sm mt-2">{{ group.description }}</p>
+            {% endif %}
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="text-center bg-white/15 rounded-xl px-5 py-3">
+              <p class="text-3xl font-black">{{ students | length }}</p>
+              <p class="text-white/60 text-xs">Étudiants</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="flex flex-wrap gap-3 mb-6">
+        <button @click="showAddForm = !showAddForm" class="btn-primary text-sm !py-2.5 !px-5">
+          + Ajouter étudiant
+        </button>
+        <button @click="showImport = !showImport" class="btn-accent text-sm !py-2.5 !px-5">
+          📤 Importer CSV/Excel
+        </button>
+        <a href="/static/templates/template_etudiants.csv" download
+           class="border-2 border-primary text-primary rounded-xl py-2.5 px-5 text-sm font-semibold hover:bg-blue-soft transition-colors">
+          📥 Template CSV
+        </a>
+      </div>
+
+      <!-- Add student form (collapsible) -->
+      <div x-show="showAddForm" x-transition class="bg-white rounded-2xl shadow-card border border-blue-soft/40 p-6 mb-6">
+        <h3 class="font-semibold text-slate-800 mb-4">Ajouter un étudiant manuellement</h3>
+        <form method="POST" action="{{ url_for('professor.add_student', group_id=group.id) }}">
+          <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Prénom *</label>
+              <input type="text" name="first_name" required placeholder="Prénom" class="input-field"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Nom *</label>
+              <input type="text" name="last_name" required placeholder="Nom" class="input-field"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Email *</label>
+              <input type="email" name="email" required placeholder="etudiant@uemf.ac.ma" class="input-field"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Matricule</label>
+              <input type="text" name="matricule" placeholder="ex: 2024001" class="input-field"/>
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <button type="submit" class="btn-primary text-sm !py-2.5">Ajouter et envoyer accès</button>
+            <button type="button" @click="showAddForm = false"
+                    class="border-2 border-slate-200 text-slate-600 rounded-xl py-2.5 px-5 text-sm font-semibold hover:bg-slate-50 transition-colors">
+              Annuler
+            </button>
+          </div>
+        </form>
+        <p class="text-xs text-slate-400 mt-3">
+          💡 Un mot de passe temporaire sera automatiquement envoyé par email à l'étudiant.
+        </p>
+      </div>
+
+      <!-- Import form (collapsible) -->
+      <div x-show="showImport" x-transition class="bg-white rounded-2xl shadow-card border border-blue-soft/40 p-6 mb-6">
+        <h3 class="font-semibold text-slate-800 mb-2">Importer depuis CSV ou Excel</h3>
+        <p class="text-slate-500 text-sm mb-4">
+          Colonnes attendues : <code class="bg-blue-soft text-primary px-2 py-0.5 rounded">nom</code>
+          <code class="bg-blue-soft text-primary px-2 py-0.5 rounded ml-1">prenom</code>
+          <code class="bg-blue-soft text-primary px-2 py-0.5 rounded ml-1">email</code>
+          <code class="bg-blue-soft text-primary px-2 py-0.5 rounded ml-1">matricule</code>
+        </p>
+        <form method="POST" action="{{ url_for('professor.import_students', group_id=group.id) }}"
+              enctype="multipart/form-data">
+          <div class="border-2 border-dashed border-blue-soft rounded-xl p-8 text-center mb-4">
+            <div class="text-4xl mb-3">📁</div>
+            <input type="file" name="file" id="file-input" accept=".csv,.xlsx,.xls"
+                   class="hidden" required/>
+            <label for="file-input" class="btn-primary text-sm cursor-pointer">
+              Choisir un fichier
+            </label>
+            <p class="text-xs text-slate-400 mt-3">CSV ou Excel (.xlsx) · Max 16 Mo</p>
+          </div>
+          <div class="flex gap-3">
+            <button type="submit" class="btn-accent text-sm !py-2.5">📤 Importer maintenant</button>
+            <button type="button" @click="showImport = false"
+                    class="border-2 border-slate-200 text-slate-600 rounded-xl py-2.5 px-5 text-sm font-semibold hover:bg-slate-50 transition-colors">
+              Annuler
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Students table -->
+      <div class="bg-white rounded-2xl shadow-card border border-blue-soft/40 overflow-hidden">
+        <div class="px-6 py-4 border-b border-blue-soft/40 flex items-center justify-between">
+          <h3 class="font-semibold text-slate-800">Liste des étudiants</h3>
+          <span class="badge-present">{{ students | length }} étudiants</span>
+        </div>
+        {% if students %}
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="bg-blue-soft/40">
+              <tr>
+                <th class="text-left text-xs font-semibold text-slate-500 px-5 py-3 uppercase tracking-wide">Étudiant</th>
+                <th class="text-left text-xs font-semibold text-slate-500 px-4 py-3 uppercase tracking-wide">Matricule</th>
+                <th class="text-left text-xs font-semibold text-slate-500 px-4 py-3 uppercase tracking-wide">Email</th>
+                <th class="text-left text-xs font-semibold text-slate-500 px-4 py-3 uppercase tracking-wide">Statut</th>
+                <th class="text-right text-xs font-semibold text-slate-500 px-5 py-3 uppercase tracking-wide">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-blue-soft/40">
+              {% for student in students %}
+              <tr class="hover:bg-blue-soft/20 transition-colors">
+                <td class="px-5 py-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 gradient-primary rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      {{ student.first_name[0] }}{{ student.last_name[0] }}
+                    </div>
+                    <div>
+                      <p class="font-medium text-slate-800 text-sm">{{ student.full_name }}</p>
+                      {% if student.temp_password_plain and student.temp_password_expires_at and student.temp_password_expires_at > now %}
+                      <div class="flex items-center gap-1.5 mt-1 bg-orange-50 text-orange-600 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-100">
+                        <span>🔑 {{ student.temp_password_plain }}</span>
+                        <span class="text-[9px] font-normal text-orange-400 italic">(Exp: {{ student.temp_password_expires_at.strftime('%H:%M') }})</span>
+                      </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-sm text-slate-600">{{ student.matricule or '—' }}</td>
+                <td class="px-4 py-3 text-sm text-slate-500">{{ student.email }}</td>
+                <td class="px-4 py-3">
+                  {% if student.is_temp_password %}
+                  <span class="badge-pending">⏳ Compte inactif</span>
+                  {% elif student.is_active %}
+                  <span class="badge-present">✅ Actif</span>
+                  {% else %}
+                  <span class="badge-absent">❌ Inactif</span>
+                  {% endif %}
+                </td>
+                <td class="px-5 py-3">
+                  <div class="flex items-center justify-end gap-2">
+                    <form method="POST"
+                          action="{{ url_for('professor.remove_student', group_id=group.id, student_id=student.id) }}"
+                          onsubmit="return confirm('Retirer {{ student.full_name }} du groupe ?')">
+                      <button type="submit"
+                              class="text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors font-medium">
+                        Retirer
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="py-16 text-center">
+          <div class="text-5xl mb-3">🎓</div>
+          <p class="text-slate-500">Aucun étudiant dans ce groupe</p>
+          <p class="text-slate-400 text-sm mt-1">Utilisez les boutons ci-dessus pour en ajouter</p>
+        </div>
+        {% endif %}
+      </div>
+
+    </main>
+  </div>
+</div>
+{% endblock %}

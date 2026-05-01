@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Connexion – EuroPresence{% endblock %}
+
+{% block body %}
+<div class="min-h-screen grid lg:grid-cols-2">
+
+  <!-- Left: Form -->
+  <div class="flex items-center justify-center p-8 bg-white">
+    <div class="w-full max-w-md fade-in">
+      <!-- Logo -->
+      <div class="flex items-center gap-3 mb-10">
+        <div class="h-12 flex items-center justify-center">
+          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UEMF Logo" class="h-full object-contain"/>
+        </div>
+        <div>
+          <p class="font-display font-bold text-primary text-base">EuroPresence</p>
+          <p class="text-slate-400 text-xs">Université Euro-Méditerranéenne de Fès</p>
+        </div>
+      </div>
+
+      <h2 class="font-display font-bold text-2xl text-slate-800 mb-1">Bon retour 👋</h2>
+      <p class="text-slate-500 mb-8">Connectez-vous à votre espace EuroPresence</p>
+
+      <form id="login-form" method="POST" action="{{ url_for('auth.login') }}"
+            x-data="{ showPwd: false, loading: false }" @submit="loading = true">
+
+        <!-- Email -->
+        <div class="mb-5">
+          <label class="block text-sm font-semibold text-slate-700 mb-1.5">
+            Adresse email universitaire
+          </label>
+          <input type="email" name="email" id="email" required autocomplete="email"
+                 placeholder="vous@uemf.ac.ma"
+                 class="input-field"/>
+        </div>
+
+        <!-- Password -->
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-1.5">
+            <label class="text-sm font-semibold text-slate-700">Mot de passe</label>
+            <a href="{{ url_for('auth.forgot_password') }}"
+               class="text-xs text-primary hover:underline font-medium">Mot de passe oublié ?</a>
+          </div>
+          <div class="relative">
+            <input :type="showPwd ? 'text' : 'password'"
+                   name="password" id="password" required autocomplete="current-password"
+                   placeholder="••••••••"
+                   class="input-field pr-12"/>
+            <button type="button" @click="showPwd = !showPwd"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors p-1">
+              <svg x-show="!showPwd" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              <svg x-show="showPwd" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" :disabled="loading"
+                class="btn-primary w-full text-center flex items-center justify-center gap-2">
+          <svg x-show="loading" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+          <span x-text="loading ? 'Connexion...' : '🔐 Se connecter'"></span>
+        </button>
+      </form>
+
+      <div class="mt-8 pt-6 border-t border-blue-soft text-center">
+        <p class="text-slate-500 text-sm">
+          Nouveau professeur ?
+          <a href="{{ url_for('auth.register') }}" class="text-primary font-semibold hover:underline">
+            Créer un compte
+          </a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Visual -->
+  <div class="hidden lg:flex items-center justify-center relative overflow-hidden"
+       style="background:linear-gradient(135deg,#003882,#005BBB);">
+    <div class="absolute inset-0 opacity-10"
+         style="background-image:url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\");"></div>
+    <div class="relative z-10 text-center text-white px-12">
+      <div class="w-24 h-24 bg-white/15 backdrop-blur-sm rounded-3xl flex items-center justify-center
+                  text-5xl mx-auto mb-8 border border-white/25">🎓</div>
+      <h2 class="font-display font-black text-3xl mb-4 leading-tight">
+        La présence<br/>réinventée
+      </h2>
+      <p class="text-white/70 text-lg leading-relaxed max-w-sm">
+        QR code dynamique, géofencing GPS, temps réel —
+        la solution anti-fraude de référence pour l'UEMF.
+      </p>
+      <div class="flex justify-center gap-6 mt-10">
+        <div class="text-center">
+          <p class="text-3xl font-black">10s</p>
+          <p class="text-white/60 text-xs">Rotation QR</p>
+        </div>
+        <div class="w-px bg-white/20"></div>
+        <div class="text-center">
+          <p class="text-3xl font-black">60m</p>
+          <p class="text-white/60 text-xs">Géofence</p>
+        </div>
+        <div class="w-px bg-white/20"></div>
+        <div class="text-center">
+          <p class="text-3xl font-black">🔒</p>
+          <p class="text-white/60 text-xs">HMAC SHA256</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

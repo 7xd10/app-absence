@@ -1,0 +1,50 @@
+<!-- Topbar partagée (mobile + desktop) -->
+<header class="bg-white border-b border-blue-soft/60 shadow-soft sticky top-0 z-30"
+        x-data="{ mobileMenu: false }">
+  <div class="flex items-center justify-between h-16 px-4 lg:px-6">
+
+    <!-- Logo mobile -->
+    <div class="flex items-center gap-3 lg:hidden">
+      <div class="h-8 flex items-center justify-center">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UEMF Logo" class="h-full object-contain"/>
+      </div>
+      <span class="font-display font-bold text-primary text-sm">EuroPresence</span>
+    </div>
+
+    <!-- Titre page -->
+    <div class="hidden lg:block">
+      <h1 class="text-lg font-semibold text-slate-700">{{ page_title | default('') }}</h1>
+    </div>
+
+    <!-- Actions topbar -->
+    <div class="flex items-center gap-3">
+      <!-- Notifications -->
+      <button class="relative p-2 rounded-lg hover:bg-blue-soft transition-colors">
+        <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+        </svg>
+      </button>
+
+      <!-- Avatar mobile -->
+      <button @click="mobileMenu = !mobileMenu"
+              class="w-9 h-9 gradient-primary rounded-full flex items-center justify-center text-white font-bold text-sm lg:hidden">
+        {{ current_user.first_name[0] if current_user else 'U' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile menu -->
+  <div x-show="mobileMenu" x-transition class="lg:hidden border-t border-blue-soft/60 bg-white p-4">
+    <nav class="flex flex-col gap-1">
+      <a href="{{ url_for('professor.dashboard') }}" class="sidebar-link">🏠 Tableau de bord</a>
+      <a href="{{ url_for('professor.groups') }}" class="sidebar-link">👥 Mes Groupes</a>
+      <a href="{{ url_for('professor.sessions') }}" class="sidebar-link">📅 Séances</a>
+      <a href="{{ url_for('professor.messages') }}" class="sidebar-link">💬 Messages</a>
+      <a href="{{ url_for('professor.profile') }}" class="sidebar-link">👤 Mon Profil</a>
+      <form action="{{ url_for('auth.logout') }}" method="POST">
+        <button type="submit" class="sidebar-link w-full text-left text-red-500">🚪 Déconnexion</button>
+      </form>
+    </nav>
+  </div>
+</header>

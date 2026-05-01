@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#003882"/>
+  <meta name="description" content="EuroPresence – Gestion moderne et sécurisée des présences universitaires par QR code dynamique – UEMF"/>
+  <title>{% block title %}EuroPresence – UEMF{% endblock %}</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json"/>
+  <link rel="icon" href="/static/images/favicon.ico"/>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet"/>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { DEFAULT:'#003882', light:'#005BBB', dark:'#002560' },
+            accent:  { DEFAULT:'#00A676', light:'#00C48C', dark:'#007D58' },
+            blue:    { soft:'#E6F0FF', mid:'#B8D0F5' },
+          },
+          fontFamily: {
+            sans: ['Inter','system-ui','sans-serif'],
+            display: ['Poppins','Inter','sans-serif'],
+          },
+          borderRadius: { xl:'12px','2xl':'16px','3xl':'24px' },
+          boxShadow: {
+            card:'0 4px 24px rgba(0,56,130,0.09)',
+            soft:'0 2px 16px rgba(0,56,130,0.07)',
+            glow:'0 0 40px rgba(0,56,130,0.18)',
+          },
+          backdropBlur: { xs:'2px' },
+        }
+      }
+    }
+  </script>
+
+  <!-- Alpine.js -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <!-- Socket.IO -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <!-- QR Scanner -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #003882;
+      --accent:  #00A676;
+      --blue-soft: #E6F0FF;
+    }
+    body { font-family:'Inter',sans-serif; background:#F8F9FA; }
+    .glass {
+      background: rgba(255,255,255,0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.55);
+    }
+    .gradient-primary { background: linear-gradient(135deg,#003882,#005BBB); }
+    .gradient-accent  { background: linear-gradient(135deg,#00A676,#00C48C); }
+    .gradient-hero    { background: linear-gradient(135deg,rgba(0,56,130,0.88),rgba(0,91,187,0.75)); }
+    .card-hover { transition: transform 0.2s,box-shadow 0.2s; }
+    .card-hover:hover { transform:translateY(-3px); box-shadow:0 12px 40px rgba(0,56,130,0.15); }
+    .btn-primary {
+      background: linear-gradient(135deg,#003882,#005BBB);
+      color:#fff; border-radius:10px; padding:12px 28px;
+      font-weight:600; font-size:15px;
+      transition: all 0.2s; display:inline-block; border:none; cursor:pointer;
+    }
+    .btn-primary:hover { transform:translateY(-1px); box-shadow:0 8px 24px rgba(0,56,130,0.30); }
+    .btn-accent {
+      background: linear-gradient(135deg,#00A676,#00C48C);
+      color:#fff; border-radius:10px; padding:12px 28px;
+      font-weight:600; font-size:15px;
+      transition: all 0.2s; display:inline-block; border:none; cursor:pointer;
+    }
+    .btn-accent:hover { transform:translateY(-1px); box-shadow:0 8px 24px rgba(0,166,118,0.30); }
+    .input-field {
+      width:100%; border:2px solid #E6F0FF; border-radius:10px;
+      padding:12px 16px; font-size:15px; background:#fff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline:none;
+    }
+    .input-field:focus { border-color:#003882; box-shadow:0 0 0 3px rgba(0,56,130,0.10); }
+    .badge-present { background:#D1FAE5; color:#065F46; border-radius:20px; padding:3px 12px; font-size:12px; font-weight:600; }
+    .badge-absent  { background:#FEE2E2; color:#991B1B; border-radius:20px; padding:3px 12px; font-size:12px; font-weight:600; }
+    .badge-pending { background:#FEF9C3; color:#92400E; border-radius:20px; padding:3px 12px; font-size:12px; font-weight:600; }
+    .sidebar-link {
+      display:flex; align-items:center; gap:10px; padding:10px 16px;
+      border-radius:10px; color:#64748b; font-weight:500; font-size:14px;
+      transition: all 0.15s;
+    }
+    .sidebar-link:hover, .sidebar-link.active {
+      background:#E6F0FF; color:#003882;
+    }
+    .sidebar-link.active { font-weight:600; }
+    @keyframes pulse-ring {
+      0%   { transform:scale(0.95); box-shadow:0 0 0 0 rgba(0,166,118,0.5); }
+      70%  { transform:scale(1);    box-shadow:0 0 0 10px rgba(0,166,118,0); }
+      100% { transform:scale(0.95); box-shadow:0 0 0 0  rgba(0,166,118,0); }
+    }
+    .live-badge { animation: pulse-ring 2s infinite; }
+    @keyframes fade-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+    .fade-in { animation: fade-in 0.4s ease both; }
+    .qr-frame {
+      border: 3px solid #003882; border-radius:16px;
+      box-shadow:0 0 0 6px rgba(0,56,130,0.12);
+    }
+    /* Flash messages */
+    .flash-success { background:#D1FAE5; border-left:4px solid #00A676; color:#065F46; }
+    .flash-error   { background:#FEE2E2; border-left:4px solid #EF4444; color:#991B1B; }
+    .flash-info    { background:#E6F0FF; border-left:4px solid #003882; color:#003882; }
+    .flash-warning { background:#FEF9C3; border-left:4px solid #F59E0B; color:#92400E; }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen">
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div id="flash-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full"
+       x-data x-init="setTimeout(()=>$el.remove(), 5000)">
+    {% for cat, msg in messages %}
+    <div class="flash-{{ cat }} rounded-xl p-4 shadow-card flex items-start gap-3 fade-in">
+      <span class="text-lg">
+        {% if cat == 'success' %}✅{% elif cat == 'error' %}❌{% elif cat == 'warning' %}⚠️{% else %}ℹ️{% endif %}
+      </span>
+      <p class="text-sm font-medium">{{ msg }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  {% block body %}{% endblock %}
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

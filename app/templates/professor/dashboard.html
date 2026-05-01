@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord – EuroPresence{% endblock %}
+
+{% set current_user = prof %}
+
+{% block body %}
+<div class="flex min-h-screen bg-slate-50">
+  {% include "partials/sidebar_prof.html" %}
+
+  <div class="flex-1 flex flex-col min-w-0">
+    {% set page_title = "Tableau de bord" %}
+    {% include "partials/topbar.html" %}
+
+    <main class="flex-1 p-4 lg:p-8 overflow-auto">
+
+      <!-- Welcome banner -->
+      <div class="gradient-primary rounded-2xl p-6 mb-8 text-white shadow-glow">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h2 class="font-display font-bold text-xl mb-1">
+              Bonjour, {{ prof.first_name }} 👋
+            </h2>
+            <p class="text-white/70 text-sm">
+              {{ prof.department or 'Professeur' }} · {{ prof.university }}
+            </p>
+          </div>
+          <a href="{{ url_for('professor.new_group') }}" class="btn-accent text-sm !py-2.5 !px-5">
+            + Nouveau Groupe
+          </a>
+        </div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-2xl p-5 shadow-card card-hover border border-blue-soft/40">
+          <div class="flex items-center justify-between mb-3">
+            <div class="w-10 h-10 bg-blue-soft rounded-xl flex items-center justify-center text-xl">📊</div>
+            <span class="text-xs text-slate-400 font-medium">Global</span>
+          </div>
+          <p class="text-3xl font-black text-primary">{{ global_rate }}%</p>
+          <p class="text-sm text-slate-500 mt-1">Taux de présence</p>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 shadow-card card-hover border border-blue-soft/40">
+          <div class="flex items-center justify-between mb-3">
+            <div class="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-xl">👥</div>
+            <span class="text-xs text-slate-400 font-medium">Actifs</span>
+          </div>
+          <p class="text-3xl font-black text-accent">{{ groups | length }}</p>
+          <p class="text-sm text-slate-500 mt-1">Groupes</p>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 shadow-card card-hover border border-blue-soft/40">
+          <div class="flex items-center justify-between mb-3">
+            <div class="w-10 h-10 bg-blue-soft rounded-xl flex items-center justify-center text-xl">🎓</div>
+            <span class="text-xs text-slate-400 font-medium">Total</span>
+          </div>
+          <p class="text-3xl font-black text-primary">{{ total_students }}</p>
+          <p class="text-sm text-slate-500 mt-1">Étudiants</p>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 shadow-card card-hover border border-blue-soft/40">
+          <div class="flex items-center justify-between mb-3">
+            <div class="w-10 h-10 bg-yellow-50 rounded-xl flex items-center justify-center text-xl">📅</div>
+            <span class="text-xs text-slate-400 font-medium">Aujourd'hui</span>
+          </div>
+          <p class="text-3xl font-black text-yellow-600">{{ sessions_today }}</p>
+          <p class="text-sm text-slate-500 mt-1">Séances</p>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-3 gap-6 mb-8">
+        <!-- Mes Groupes -->
+        <div class="lg:col-span-2 bg-white rounded-2xl shadow-card border border-blue-soft/40 p-6">
+          <div class="flex items-center justify-between mb-5">
+            <h3 class="font-semibold text-slate-800 text-lg">Mes Groupes</h3>
+            <a href="{{ url_for('professor.groups') }}"
+               class="text-primary text-sm font-medium hover:underline">Voir tout →</a>
+          </div>
+
+          {% if groups %}
+          <div class="flex flex-col gap-3">
+            {% for group in groups[:5] %}
+            <a href="{{ url_for('professor.group_detail', group_id=group.id) }}"
+               class="flex items-center gap-4 p-3 rounded-xl hover:bg-blue-soft/50 transition-colors group">
+              <div class="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                {{ group.name[0] }}
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-slate-800 text-sm truncate group-hover:text-primary">{{ group.name }}</p>
+                <p class="text-xs text-slate-500">{{ group.filiere or '' }} {{ '· ' + group.level if group.level else '' }}</p>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <p class="font-bold text-primary text-sm">{{ group.student_count }}</p>
+                <p class="text-xs text-slate-400">étudiants</p>
+              </div>
+              <svg class="w-4 h-4 text-slate-300 group-hover:text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </a>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-center py-10">
+            <div class="text-5xl mb-3">👥</div>
+            <p class="text-slate-500 mb-4">Aucun groupe créé</p>
+            <a href="{{ url_for('professor.new_group') }}" class="btn-primary text-sm !py-2.5 !px-5">
+              + Créer mon premier groupe
+            </a>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Séances récentes -->
+        <div class="bg-white rounded-2xl shadow-card border border-blue-soft/40 p-6">
+          <div class="flex items-center justify-between mb-5">
+            <h3 class="font-semibold text-slate-800 text-lg">Séances récentes</h3>
+            <a href="{{ url_for('professor.sessions') }}" class="text-primary text-sm font-medium hover:underline">Voir tout →</a>
+          </div>
+          {% if recent_sessions %}
+          <div class="flex flex-col gap-3">
+            {% for s in recent_sessions %}
+            <div class="p-3 rounded-xl border border-blue-soft/60">
+              <div class="flex items-start justify-between gap-2">
+                <p class="font-medium text-slate-800 text-sm leading-tight truncate">{{ s.title }}</p>
+                <span class="flex-shrink-0
+                  {% if s.status == 'active' %}badge-present
+                  {% elif s.status == 'ended' %}badge-absent
+                  {% else %}badge-pending{% endif %}">
+                  {{ s.status }}
+                </span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1.5">
+                {% if s.scheduled_at %}{{ s.scheduled_at.strftime('%d/%m %H:%M') }}{% endif %}
+                · {{ s.room or 'Salle N/A' }}
+              </p>
+              <div class="flex gap-3 mt-2 text-xs font-semibold">
+                <span class="text-accent">✅ {{ s.present_count }}</span>
+                <span class="text-red-400">❌ {{ s.absent_count }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-center py-8">
+            <div class="text-4xl mb-2">📅</div>
+            <p class="text-slate-500 text-sm">Aucune séance</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="bg-white rounded-2xl shadow-card border border-blue-soft/40 p-6">
+        <h3 class="font-semibold text-slate-800 text-lg mb-5">Actions rapides</h3>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <a href="{{ url_for('professor.new_group') }}"
+             class="flex flex-col items-center gap-2 p-4 bg-blue-soft/50 rounded-xl hover:bg-blue-soft transition-colors text-center card-hover">
+            <span class="text-2xl">👥</span>
+            <span class="font-medium text-primary text-sm">Nouveau Groupe</span>
+          </a>
+          <a href="{{ url_for('professor.sessions') }}"
+             class="flex flex-col items-center gap-2 p-4 bg-green-50 rounded-xl hover:bg-green-100 transition-colors text-center card-hover">
+            <span class="text-2xl">📡</span>
+            <span class="font-medium text-accent text-sm">Démarrer Session</span>
+          </a>
+          <a href="{{ url_for('professor.messages') }}"
+             class="flex flex-col items-center gap-2 p-4 bg-yellow-50 rounded-xl hover:bg-yellow-100 transition-colors text-center card-hover">
+            <span class="text-2xl">💬</span>
+            <span class="font-medium text-yellow-700 text-sm">Envoyer Message</span>
+          </a>
+          <a href="{{ url_for('professor.sessions') }}"
+             class="flex flex-col items-center gap-2 p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors text-center card-hover">
+            <span class="text-2xl">📊</span>
+            <span class="font-medium text-purple-700 text-sm">Voir Statistiques</span>
+          </a>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+{% endblock %}

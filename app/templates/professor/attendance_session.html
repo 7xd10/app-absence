@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+{% block title %}Session QR – {{ session.title }} | EuroPresence{% endblock %}
+{% set current_user = session.professor %}
+
+{% block extra_head %}
+<style>
+  .qr-animate { animation: qr-pulse 0.3s ease; }
+  @keyframes qr-pulse { 0%{opacity:0.5;transform:scale(0.97)} 100%{opacity:1;transform:scale(1)} }
+  .student-row { transition: background 0.3s; }
+  .student-row.just-arrived { animation: highlight 2s ease; }
+  @keyframes highlight {
+    0%  { background: #D1FAE5; }
+    100%{ background: transparent; }
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-slate-50" x-data="sessionManager()" x-init="init()">
+
+  <!-- Header -->
+  <div class="gradient-primary text-white px-6 py-4 flex items-center justify-between shadow-lg">
+    <div class="flex items-center gap-4">
+      <a href="{{ url_for('professor.sessions') }}" class="hover:bg-white/20 rounded-lg p-2 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </a>
+      <div>
+        <h1 class="font-display font-bold text-lg leading-tight">{{ session.title }}</h1>
+        <div class="flex items-center gap-2 text-white/70 text-sm">
+          <span>{{ session.room or 'Salle N/A' }}</span>
+          <span>·</span>
+          <span x-show="status === 'active'" class="flex items-center gap-1.5">
+            <span class="w-2 h-2 bg-accent rounded-full live-badge"></span>
+            <span class="text-accent font-semibold">EN DIRECT</span>
+          </span>
+          <span x-show="status === 'pending'" class="text-white/60">En attente de démarrage</span>
+          <span x-show="status === 'ended'" class="text-white/60">Terminée</span>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div x-show="status === 'pending'">
+        <button @click="startSession()" class="btn-accent text-sm !py-2 !px-5">
+          ▶ Démarrer
+        </button>
+      </div>
+      <div x-show="status === 'active'">
+        <button @click="endSession()" class="bg-red-500 hover:bg-red-600 text-white rounded-xl py-2 px-5 font-semibold text-sm transition-colors">
+          ⏹ Terminer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 lg:px-8 py-6">
+    <div class="grid xl:grid-cols-3 gap-6">
+
+      <!-- QR Code Panel -->
+      <div class="xl:col-span-1">
+        <div class="bg-white rounded-2xl shadow-card border border-blue-soft/40 p-6 sticky top-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-semibold text-slate-800">QR Code Dynamique</h2>
+            <div x-show="status === 'active'"
+                 class="flex items-center gap-1.5 bg-green-50 text-accent rounded-full px-3 py-1 text-xs font-semibold">
+              <span class="w-2 h-2 bg-accent rounded-full live-badge"></span>
+              ACTIF
+            </div>
+          </div>
+
+          <!-- QR Display -->
+          <div class="relative">
+            <div id="qr-container"
+                 class="bg-white border-4 border-primary/20 rounded-2xl p-4 flex items-center justify-center min-h-64"
+                 :class="{ 'opacity-30': status !== 'active' }">
+              <div x-show="status !== 'active'" class="text-center">
+                <p class="text-5xl mb-3">📡</p>
+                <p class="text-slate-400 text-sm font-medium">Démarrez la session<br/>pour afficher le QR</p>
+              </div>
+              <img x-show="status === 'active' && qrBase64"
+                   :src="'data:image/png;base64,' + qrBase64"
+                   class="w-full max-w-xs mx-auto qr-animate rounded-xl" alt="QR Code"/>
+            </div>
+
+            <!-- Countdown overlay -->
+            <div x-show="status === 'active'"
+                 class="absolute bottom-2 right-2 bg-primary text-white rounded-xl px-3 py-1.5 text-xs font-bold shadow-lg">
+              🔄 <span x-text="countdown"></span>s
+            </div>
+          </div>
+
+          <!-- Anti-fraude indicators -->
+          <div x-show="status === 'active'" class="mt-4 flex flex-col gap-2">
+            <div class="flex items-center justify-between text-xs p-2 bg-green-50 rounded-lg">
+              <span class="text-slate-600 font-medium">📍 Géofencing GPS</span>
+              <span class="font-bold" :class="professorLat ? 'text-accent' : 'text-orange-400'"
+                    x-text="professorLat ? '✅ Actif (80m)' : '⚠ En attente'"></span>
+            </div>
+            <div class="flex items-center justify-between text-xs p-2 bg-green-50 rounded-lg">
+              <span class="text-slate-600 font-medium">🔐 HMAC SHA256</span>
+              <span class="text-accent font-bold">✅ Activé</span>
+            </div>
+            <div class="flex items-center justify-between text-xs p-2 bg-green-50 rounded-lg">
+              <span class="text-slate-600 font-medium">⚡ SocketIO</span>
+              <span class="font-bold" :class="connected ? 'text-accent' : 'text-red-400'"
+                    x-text="connected ? '✅ Connecté' : '❌ Déconnecté'"></span>
+            </div>
+          </div>
+
+          <!-- Export buttons (visible after session ends) -->
+          <div x-show="status === 'ended'" class="mt-5 flex flex-col gap-2">
+            <p class="text-sm font-semibold text-slate-700 mb-1">Exporter les présences :</p>
+            <a href="{{ url_for('professor.export_session', session_id=session.id, fmt='excel') }}"
+               class="btn-accent text-sm text-center !py-2.5">📊 Exporter Excel</a>
+            <a href="{{ url_for('professor.export_session', session_id=session.id, fmt='pdf') }}"
+               class="btn-primary text-sm text-center !py-2.5">📄 Exporter PDF</a>
+            <a href="{{ url_for('professor.export_session', session_id=session.id, fmt='csv') }}"
+               class="border-2 border-primary text-primary rounded-xl py-2.5 text-sm text-center font-semibold hover:bg-blue-soft transition-colors">
+              📋 Exporter CSV
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attendance Panel -->
+      <div class="xl:col-span-2 flex flex-col gap-4">
+
+        <!-- Global stats -->
+        <div class="grid grid-cols-3 gap-3">
+          <div class="bg-white rounded-2xl shadow-card border border-blue-soft/40 p-4 text-center">
+            <p class="text-3xl font-black text-accent" x-text="totalPresent">0</p>
+            <p class="text-xs text-slate-500 mt-1 font-medium">Présents</p>
+          </div>
+          <div class="bg-white rounded-2xl shadow-card border border-blue-soft/40 p-4 text-center">
+            <p class="text-3xl font-black text-red-400" x-text="totalAbsent">0</p>
+            <p class="text-xs text-slate-500 mt-1 font-medium">Absents</p>
+          </div>
+          <div class="bg-white rounded-2xl shadow-card border border-blue-soft/40 p-4 text-center">
+            <p class="text-3xl font-black text-primary" x-text="totalStudents">0</p>
+            <p class="text-xs text-slate-500 mt-1 font-medium">Total</p>
+          </div>
+        </div>
+
+        <!-- Groups attendance tables -->
+        <template x-for="group in groups" :key="group.id">
+          <div class="bg-white rounded-2xl shadow-card border border-blue-soft/40 overflow-hidden">
+            <!-- Group header -->
+            <div class="px-5 py-4 border-b border-blue-soft/40 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 gradient-primary rounded-xl flex items-center justify-center text-white font-bold text-sm"
+                     x-text="group.name.charAt(0)"></div>
+                <div>
+                  <h3 class="font-semibold text-slate-800" x-text="group.name"></h3>
+                  <div class="flex gap-3 text-xs mt-0.5">
+                    <span class="text-accent font-semibold" x-text="'✅ ' + group.present + ' présents'"></span>
+                    <span class="text-red-400 font-semibold" x-text="'❌ ' + group.absent + ' absents'"></span>
+                  </div>
+                </div>
+              </div>
+              <!-- Progress bar -->
+              <div class="w-24 text-right">
+                <p class="text-xs text-slate-500 mb-1"
+                   x-text="group.total > 0 ? Math.round(group.present/group.total*100) + '%' : '0%'"></p>
+                <div class="w-full bg-blue-soft rounded-full h-2">
+                  <div class="bg-accent h-2 rounded-full transition-all duration-500"
+                       :style="'width:' + (group.total > 0 ? Math.round(group.present/group.total*100) : 0) + '%'"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Student list -->
+            <div class="divide-y divide-blue-soft/40 max-h-72 overflow-y-auto">
+              <template x-for="student in group.students" :key="student.id">
+                <div class="flex items-center gap-3 px-5 py-3 student-row"
+                     :class="{ 'just-arrived': student.justArrived }">
+                  <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                       :class="student.status === 'present' ? 'bg-accent text-white' : 'bg-red-100 text-red-500'">
+                    <span x-text="student.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase()"></span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="font-medium text-slate-800 text-sm truncate" x-text="student.name"></p>
+                    <p class="text-xs text-slate-400" x-text="student.scanned_at ? '⏰ ' + new Date(student.scanned_at).toLocaleTimeString('fr-FR') : 'En attente'"></p>
+                  </div>
+                  <span :class="student.status === 'present' ? 'badge-present' : 'badge-absent'"
+                        x-text="student.status === 'present' ? '✅ Présent' : '❌ Absent'"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function sessionManager() {
+  return {
+    sessionId: '{{ session.id }}',
+    status: '{{ session.status }}',
+    qrBase64: '',
+    countdown: {{ config.QR_ROTATION_SECONDS }},
+    groups: [],
+    connected: false,
+    professorLat: null,
+    professorLng: null,
+    socket: null,
+    qrInterval: null,
+    countdownInterval: null,
+    totalPresent: 0,
+    totalAbsent: 0,
+    totalStudents: 0,
+
+    async init() {
+      await this.loadStats();
+      if (this.status === 'active') {
+        this.startQRRefresh();
+        this.connectSocket();
+      }
+    },
+
+    async loadStats() {
+      try {
+        const r = await fetch(`/api/session/${this.sessionId}/stats`, {
+          headers: { 'Authorization': `Bearer ${this.getToken()}` }
+        });
+        if (!r.ok) return;
+        const data = await r.json();
+        this.groups = data.groups.map(g => ({
+          ...g,
+          students: g.students.map(s => ({ ...s, justArrived: false }))
+        }));
+        this.calcTotals();
+      } catch(e) { console.error(e); }
+    },
+
+    calcTotals() {
+      this.totalPresent = this.groups.reduce((s, g) => s + g.present, 0);
+      this.totalAbsent  = this.groups.reduce((s, g) => s + g.absent,  0);
+      this.totalStudents = this.groups.reduce((s, g) => s + g.total, 0);
+    },
+
+    async startSession() {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        this.professorLat = pos.coords.latitude;
+        this.professorLng = pos.coords.longitude;
+        const r = await fetch(`/professeur/presence/${this.sessionId}/demarrer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.getToken()}` },
+          body: JSON.stringify({ lat: this.professorLat, lng: this.professorLng })
+        });
+        if (r.ok) {
+          this.status = 'active';
+          this.startQRRefresh();
+          this.connectSocket();
+          await this.loadStats();
+        }
+      }, () => {
+        // Sans GPS → démarrer quand même
+        this.startWithoutGPS();
+      });
+    },
+
+    async startWithoutGPS() {
+      const r = await fetch(`/professeur/presence/${this.sessionId}/demarrer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.getToken()}` },
+        body: JSON.stringify({})
+      });
+      if (r.ok) {
+        this.status = 'active';
+        this.startQRRefresh();
+        this.connectSocket();
+        await this.loadStats();
+      }
+    },
+
+    async endSession() {
+      if (!confirm('Terminer la session ? Les absences seront finalisées.')) return;
+      const r = await fetch(`/professeur/presence/${this.sessionId}/terminer`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${this.getToken()}` }
+      });
+      if (r.ok) {
+        this.status = 'ended';
+        clearInterval(this.qrInterval);
+        clearInterval(this.countdownInterval);
+        this.qrBase64 = '';
+        if (this.socket) this.socket.disconnect();
+      }
+    },
+
+    startQRRefresh() {
+      const rotation = {{ config.QR_ROTATION_SECONDS }};
+      this.fetchQR();
+      this.countdown = rotation;
+
+      this.countdownInterval = setInterval(() => {
+        this.countdown--;
+        if (this.countdown <= 0) {
+          this.countdown = rotation;
+          this.fetchQR();
+        }
+      }, 1000);
+    },
+
+    async fetchQR() {
+      try {
+        const r = await fetch(`/api/session/${this.sessionId}/qr`, {
+          headers: { 'Authorization': `Bearer ${this.getToken()}` }
+        });
+        if (r.ok) {
+          const data = await r.json();
+          this.qrBase64 = data.qr_base64;
+        }
+      } catch(e) { console.error('QR fetch error:', e); }
+    },
+
+    connectSocket() {
+      this.socket = io();
+      this.socket.on('connect', () => {
+        this.connected = true;
+        this.socket.emit('join_session', {
+          token: this.getToken(),
+          session_id: this.sessionId
+        });
+      });
+      this.socket.on('disconnect', () => { this.connected = false; });
+      this.socket.on('attendance_update', (data) => {
+        this.handleAttendanceUpdate(data);
+      });
+    },
+
+    handleAttendanceUpdate(data) {
+      for (let group of this.groups) {
+        if (group.id === data.group_id) {
+          const student = group.students.find(s => s.id === data.student_id);
+          if (student) {
+            const wasAbsent = student.status === 'absent';
+            student.status = data.status;
+            student.scanned_at = data.scanned_at;
+            if (wasAbsent && data.status === 'present') {
+              group.present++;
+              group.absent--;
+              student.justArrived = true;
+              setTimeout(() => { student.justArrived = false; }, 2000);
+            }
+          }
+        }
+      }
+      this.calcTotals();
+    },
+
+    getToken() {
+      // Récupère le token JWT depuis le cookie ou localStorage
+      const cookie = document.cookie.split(';').find(c => c.trim().startsWith('access_token_cookie='));
+      if (cookie) return cookie.split('=')[1];
+      return localStorage.getItem('access_token') || '';
+    }
+  };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Inscription Professeur – EuroPresence{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gradient-to-br from-blue-soft via-white to-green-50 flex items-center justify-center p-6">
+  <div class="w-full max-w-2xl fade-in">
+    <!-- Header card -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center gap-3 mb-4">
+        <div class="h-12 flex items-center justify-center">
+          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UEMF Logo" class="h-full object-contain"/>
+        </div>
+      </div>
+      <h1 class="font-display font-bold text-2xl text-primary mb-1">Créer un compte Professeur</h1>
+      <p class="text-slate-500">Rejoignez EuroPresence – Université Euro-Méditerranéenne de Fès</p>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-card p-8 border border-blue-soft/50">
+      <form method="POST" action="{{ url_for('auth.register') }}"
+            x-data="{ showPwd: false, loading: false }" @submit="loading = true">
+
+        <!-- Nom / Prénom -->
+        <div class="grid sm:grid-cols-2 gap-5 mb-5">
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Prénom *</label>
+            <input type="text" name="first_name" required placeholder="Votre prénom" class="input-field"/>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Nom *</label>
+            <input type="text" name="last_name" required placeholder="Votre nom de famille" class="input-field"/>
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div class="mb-5">
+          <label class="block text-sm font-semibold text-slate-700 mb-1.5">Email universitaire *</label>
+          <input type="email" name="email" required
+                 placeholder="prenom.nom@uemf.ac.ma" class="input-field"/>
+          <p class="text-xs text-slate-400 mt-1">Gmail et Outlook académiques acceptés</p>
+        </div>
+
+        <!-- Téléphone -->
+        <div class="mb-5">
+          <label class="block text-sm font-semibold text-slate-700 mb-1.5">Téléphone</label>
+          <input type="tel" name="phone" placeholder="+212 6XX XXX XXX" class="input-field"/>
+        </div>
+
+        <!-- Université / Département -->
+        <div class="grid sm:grid-cols-2 gap-5 mb-5">
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Université</label>
+            <input type="text" name="university"
+                   value="Université Euro-Méditerranéenne de Fès" class="input-field"/>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Département / Filière *</label>
+            <input type="text" name="department" required
+                   placeholder="ex : Génie Informatique" class="input-field"/>
+          </div>
+        </div>
+
+        <!-- Mot de passe -->
+        <div class="mb-6">
+          <label class="block text-sm font-semibold text-slate-700 mb-1.5">Mot de passe *</label>
+          <div class="relative">
+            <input :type="showPwd ? 'text' : 'password'"
+                   name="password" required placeholder="Min. 8 caractères" class="input-field pr-12"/>
+            <button type="button" @click="showPwd = !showPwd"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary p-1">
+              <svg x-show="!showPwd" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              <svg x-show="showPwd" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+              </svg>
+            </button>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">Minimum 8 caractères, incluant lettres et chiffres</p>
+        </div>
+
+        <!-- Checkbox CGU -->
+        <div class="flex items-start gap-3 mb-8">
+          <input type="checkbox" required id="cgu" class="mt-1 w-4 h-4 accent-primary"/>
+          <label for="cgu" class="text-sm text-slate-600">
+            J'accepte les <a href="#" class="text-primary font-medium hover:underline">conditions d'utilisation</a>
+            et la politique de confidentialité d'EuroPresence – UEMF.
+          </label>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" :disabled="loading"
+                class="btn-primary w-full flex items-center justify-center gap-2 text-base">
+          <svg x-show="loading" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+          <span x-text="loading ? 'Création en cours...' : '🎓 Créer mon compte professeur'"></span>
+        </button>
+      </form>
+
+      <div class="mt-6 pt-6 border-t border-blue-soft text-center">
+        <p class="text-slate-500 text-sm">
+          Déjà un compte ?
+          <a href="{{ url_for('auth.login') }}" class="text-primary font-semibold hover:underline">
+            Me connecter
+          </a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

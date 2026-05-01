@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}EuroPresence – Gestion des présences par QR code | UEMF{% endblock %}
+
+{% block body %}
+
+<!-- ═══ NAVBAR ═══════════════════════════════════════════════════════════ -->
+<nav class="fixed top-0 left-0 right-0 z-50 glass border-b border-white/30"
+     x-data="{ scrolled: false, lang: 'fr' }"
+     @scroll.window="scrolled = window.scrollY > 20">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <!-- Logo -->
+    <div class="flex items-center gap-3">
+      <div class="h-10 flex items-center justify-center">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UEMF Logo" class="h-full object-contain"/>
+      </div>
+      <div>
+        <p class="font-display font-bold text-primary leading-none text-sm">EuroPresence</p>
+        <p class="text-[10px] text-slate-500 leading-none">UEMF · Fès</p>
+      </div>
+    </div>
+
+    <!-- Links desktop -->
+    <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+      <a href="#fonctionnalites" class="hover:text-primary transition-colors">Fonctionnalités</a>
+      <a href="#avantages" class="hover:text-primary transition-colors">Avantages</a>
+      <a href="#securite" class="hover:text-primary transition-colors">Sécurité</a>
+    </div>
+
+    <!-- CTA -->
+    <div class="flex items-center gap-3">
+      <a href="{{ url_for('auth.login') }}"
+         class="text-primary font-semibold text-sm hover:underline">Connexion</a>
+      <a href="{{ url_for('auth.register') }}"
+         class="btn-primary text-sm !py-2.5 !px-5">Commencer gratuitement</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ HERO ══════════════════════════════════════════════════════════════ -->
+<section class="relative min-h-screen flex items-center overflow-hidden pt-16">
+  <!-- Background campus image + overlay -->
+  <div class="absolute inset-0 z-0">
+    <div class="absolute inset-0 gradient-hero z-10"></div>
+    <!-- Campus pattern geometric overlay -->
+    <div class="absolute inset-0 z-5 opacity-10"
+         style="background-image:url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\");"></div>
+    <!-- Decorative circles -->
+    <div class="absolute top-1/4 right-10 w-96 h-96 bg-accent/20 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-1/4 left-10 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
+    <!-- Campus background image -->
+    <div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url('{{ url_for('static', filename='images/campus.jpg') }}');"></div>
+    <div class="absolute inset-0 bg-primary/80 mix-blend-multiply"></div>
+  </div>
+
+  <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-24 grid lg:grid-cols-2 gap-16 items-center">
+    <!-- Left content -->
+    <div class="text-white fade-in">
+      <div class="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/25
+                  rounded-full px-4 py-2 text-sm font-medium text-white mb-8">
+        <span class="w-2 h-2 bg-accent rounded-full live-badge"></span>
+        Université Euro-Méditerranéenne de Fès (UEMF)
+      </div>
+
+      <h1 class="font-display font-black text-4xl sm:text-5xl lg:text-6xl leading-[1.1] mb-6">
+        Gestion moderne<br/>
+        <span class="text-accent">des présences</span><br/>
+        universitaires
+      </h1>
+
+      <p class="text-white/80 text-lg leading-relaxed mb-10 max-w-lg">
+        QR code dynamique sécurisé, temps réel, anti-fraude avancé —
+        la solution de référence pour les établissements d'enseignement supérieur.
+      </p>
+
+      <div class="flex flex-wrap gap-4">
+        <a href="{{ url_for('auth.register') }}" class="btn-accent text-base !py-4 !px-8">
+          🚀 Démarrer maintenant
+        </a>
+        <a href="#fonctionnalites"
+           class="flex items-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm
+                  border border-white/30 text-white rounded-xl py-4 px-8 font-semibold
+                  text-base transition-all">
+          Découvrir ↓
+        </a>
+      </div>
+
+      <!-- Stats -->
+      <div class="flex flex-wrap gap-8 mt-12 pt-8 border-t border-white/20">
+        <div>
+          <p class="text-3xl font-display font-black text-white">98%</p>
+          <p class="text-sm text-white/60">Précision anti-fraude</p>
+        </div>
+        <div>
+          <p class="text-3xl font-display font-black text-white">10s</p>
+          <p class="text-sm text-white/60">Rotation QR code</p>
+        </div>
+        <div>
+          <p class="text-3xl font-display font-black text-white">60m</p>
+          <p class="text-sm text-white/60">Rayon géofencing</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: QR Demo Card -->
+    <div class="fade-in" style="animation-delay:0.2s">
+      <div class="glass rounded-3xl p-8 shadow-glow max-w-sm mx-auto">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="h-8 flex items-center justify-center bg-white rounded-lg px-2">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UEMF Logo" class="h-full object-contain"/>
+          </div>
+          <div>
+            <p class="font-semibold text-slate-700 text-sm">Session en cours</p>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2 h-2 bg-accent rounded-full live-badge"></span>
+              <span class="text-xs text-accent font-medium">EN DIRECT</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fake QR -->
+        <div class="bg-white rounded-2xl p-4 shadow-inner mb-6 flex items-center justify-center">
+          <div class="qr-frame p-3">
+            <svg viewBox="0 0 100 100" class="w-40 h-40">
+              <rect x="10" y="10" width="30" height="30" rx="3" fill="#003882"/>
+              <rect x="15" y="15" width="20" height="20" rx="2" fill="white"/>
+              <rect x="18" y="18" width="14" height="14" rx="1" fill="#003882"/>
+              <rect x="60" y="10" width="30" height="30" rx="3" fill="#003882"/>
+              <rect x="65" y="15" width="20" height="20" rx="2" fill="white"/>
+              <rect x="68" y="18" width="14" height="14" rx="1" fill="#003882"/>
+              <rect x="10" y="60" width="30" height="30" rx="3" fill="#003882"/>
+              <rect x="15" y="65" width="20" height="20" rx="2" fill="white"/>
+              <rect x="18" y="68" width="14" height="14" rx="1" fill="#003882"/>
+              <rect x="45" y="10" width="8" height="8" fill="#003882"/>
+              <rect x="55" y="10" width="4" height="4" fill="#003882"/>
+              <rect x="45" y="20" width="4" height="8" fill="#003882"/>
+              <rect x="52" y="22" width="6" height="6" fill="#003882"/>
+              <rect x="45" y="45" width="8" height="8" fill="#003882"/>
+              <rect x="56" y="45" width="6" height="6" fill="#003882"/>
+              <rect x="65" y="45" width="4" height="12" fill="#003882"/>
+              <rect x="72" y="50" width="8" height="4" fill="#003882"/>
+              <rect x="45" y="56" width="4" height="8" fill="#003882"/>
+              <rect x="52" y="60" width="10" height="4" fill="#003882"/>
+              <rect x="45" y="68" width="8" height="8" fill="#003882"/>
+              <rect x="56" y="65" width="6" height="10" fill="#003882"/>
+              <rect x="65" y="60" width="12" height="6" fill="#003882"/>
+              <rect x="78" y="60" width="4" height="12" fill="#003882"/>
+              <rect x="65" y="70" width="10" height="4" fill="#003882"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs text-slate-500 mb-4">
+          <span>🔄 Renouvellement dans</span>
+          <span class="font-bold text-primary" id="hero-countdown">8s</span>
+        </div>
+
+        <!-- Attendance list -->
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center gap-2 bg-green-50 rounded-lg p-2.5">
+            <span class="w-6 h-6 bg-accent rounded-full flex items-center justify-center text-white text-xs">✓</span>
+            <span class="text-sm text-slate-700">Amina Boulahia</span>
+            <span class="ml-auto text-xs text-accent font-medium">09:04</span>
+          </div>
+          <div class="flex items-center gap-2 bg-green-50 rounded-lg p-2.5">
+            <span class="w-6 h-6 bg-accent rounded-full flex items-center justify-center text-white text-xs">✓</span>
+            <span class="text-sm text-slate-700">Yassine Alami</span>
+            <span class="ml-auto text-xs text-accent font-medium">09:05</span>
+          </div>
+          <div class="flex items-center gap-2 bg-red-50 rounded-lg p-2.5">
+            <span class="w-6 h-6 bg-red-400 rounded-full flex items-center justify-center text-white text-xs">✗</span>
+            <span class="text-sm text-slate-700">Sara Tahiri</span>
+            <span class="ml-auto badge-absent">Absent</span>
+          </div>
+        </div>
+
+        <div class="mt-4 flex justify-between text-sm font-semibold">
+          <span class="text-accent">✅ 2 présents</span>
+          <span class="text-red-400">❌ 1 absent</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FONCTIONNALITÉS ═══════════════════════════════════════════════════ -->
+<section id="fonctionnalites" class="py-24 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-16">
+      <span class="text-accent font-semibold text-sm uppercase tracking-wider">Tout-en-un</span>
+      <h2 class="font-display font-bold text-3xl sm:text-4xl text-primary mt-2 mb-4">
+        Fonctionnalités complètes
+      </h2>
+      <p class="text-slate-500 max-w-2xl mx-auto text-lg">
+        Une plateforme pensée pour les professeurs et les étudiants,
+        avec une sécurité de niveau institutionnel.
+      </p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% set features = [
+        ('🔐', 'QR Code Dynamique', 'Code renouvelé toutes les 10 secondes, signé HMAC-SHA256. Impossible à partager ou à réutiliser.', '#003882'),
+        ('📍', 'Géofencing GPS', 'Rayon de 60-80m autour de la salle. Les étudiants hors zone sont automatiquement marqués absents.', '#00A676'),
+        ('⚡', 'Temps Réel', 'Suivi en direct via WebSocket. Le professeur voit chaque présence s\'enregistrer instantanément.', '#005BBB'),
+        ('📊', 'Tableaux de Bord', 'Statistiques avancées, graphiques, taux de présence par groupe, alertes automatiques.', '#003882'),
+        ('📤', 'Export Pro', 'Exportez en Excel, CSV ou PDF avec logo UEMF, formatage professionnel et résumé détaillé.', '#00A676'),
+        ('📧', 'Communications', 'Envoi de messages et avertissements aux étudiants avec modèles prédéfinis et historique.', '#005BBB'),
+      ] %}
+      {% for icon, title, desc, color in features %}
+      <div class="bg-white rounded-2xl p-6 shadow-card card-hover border border-blue-soft/40">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4"
+             style="background: {{ color }}18;">{{ icon }}</div>
+        <h3 class="font-semibold text-slate-800 text-lg mb-2">{{ title }}</h3>
+        <p class="text-slate-500 text-sm leading-relaxed">{{ desc }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ═══ AVANTAGES ════════════════════════════════════════════════════════ -->
+<section id="avantages" class="py-24" style="background:linear-gradient(135deg,#F0F6FF,#E6F8F2);">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="grid lg:grid-cols-2 gap-16 items-center">
+      <div>
+        <span class="text-accent font-semibold text-sm uppercase tracking-wider">Pourquoi EuroPresence ?</span>
+        <h2 class="font-display font-bold text-3xl sm:text-4xl text-primary mt-2 mb-6">
+          Designed pour<br/>l'enseignement supérieur
+        </h2>
+        <div class="flex flex-col gap-5">
+          {% for point in [
+            ('Gain de temps immédiat', 'Plus de feuilles de présence papier. Le QR code gère tout en quelques secondes.'),
+            ('Anti-fraude renforcé', 'Combinaison de QR dynamique + GPS + empreinte appareil = fraude quasi impossible.'),
+            ('Import facile', 'Importez vos listes étudiants en CSV ou Excel en un clic avec envoi automatique des accès.'),
+            ('Multi-groupes simultanés', 'Gérez plusieurs groupes dans la même session avec suivi séparé par groupe.'),
+            ('Conforme RGPD', 'Données hébergées localement, chiffrement bcrypt, logs d\'audit complets.'),
+          ] %}
+          <div class="flex gap-4 items-start">
+            <div class="w-8 h-8 gradient-accent rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-slate-800">{{ point[0] }}</h4>
+              <p class="text-slate-500 text-sm mt-0.5">{{ point[1] }}</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <!-- Visual card -->
+      <div class="bg-white rounded-3xl shadow-glow p-8">
+        <div class="text-center mb-6">
+          <div class="inline-flex items-center gap-2 bg-blue-soft rounded-full px-4 py-2 text-primary text-sm font-semibold">
+            📈 Statistiques en direct
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <div class="bg-gradient-to-br from-primary to-blue-600 rounded-2xl p-5 text-white text-center">
+            <p class="text-4xl font-black">87%</p>
+            <p class="text-sm text-white/70 mt-1">Taux de présence</p>
+          </div>
+          <div class="bg-gradient-to-br from-accent to-green-400 rounded-2xl p-5 text-white text-center">
+            <p class="text-4xl font-black">342</p>
+            <p class="text-sm text-white/70 mt-1">Étudiants actifs</p>
+          </div>
+          <div class="bg-blue-soft rounded-2xl p-5 text-center">
+            <p class="text-4xl font-black text-primary">12</p>
+            <p class="text-sm text-slate-500 mt-1">Groupes actifs</p>
+          </div>
+          <div class="bg-green-50 rounded-2xl p-5 text-center">
+            <p class="text-4xl font-black text-accent">98%</p>
+            <p class="text-sm text-slate-500 mt-1">Anti-fraude</p>
+          </div>
+        </div>
+        <div class="bg-blue-soft rounded-xl p-4 text-center">
+          <p class="text-primary font-semibold text-sm">🔐 Dernière session : <strong>Génie Logiciel S5</strong></p>
+          <p class="text-slate-500 text-xs mt-1">25 présents sur 28 étudiants · Il y a 2h</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SÉCURITÉ ══════════════════════════════════════════════════════════ -->
+<section id="securite" class="py-24 bg-primary text-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 text-center">
+    <span class="text-accent font-semibold text-sm uppercase tracking-wider">Sécurité renforcée</span>
+    <h2 class="font-display font-bold text-3xl sm:text-4xl mt-2 mb-4">
+      Protection anti-fraude à plusieurs niveaux
+    </h2>
+    <p class="text-white/70 max-w-2xl mx-auto mb-16 text-lg">
+      EuroPresence combine 5 mécanismes de sécurité pour garantir l'intégrité absolue des présences.
+    </p>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {% for n, label, desc in [
+        ('1','QR Dynamique','Expire toutes les 10s, signé HMAC-SHA256'),
+        ('2','Géofencing','GPS ≤ 80m de la salle de cours'),
+        ('3','Appareil unique','1 compte = 1 appareil = 1 empreinte'),
+        ('4','JWT sécurisé','Tokens courts + refresh + blacklist'),
+        ('5','Rate limiting','Max 5 tentatives login / minute'),
+      ] %}
+      <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-5 text-center border border-white/15">
+        <div class="w-10 h-10 bg-accent rounded-full flex items-center justify-center font-black text-lg mx-auto mb-3">
+          {{ n }}
+        </div>
+        <h4 class="font-semibold mb-1.5">{{ label }}</h4>
+        <p class="text-white/60 text-xs leading-relaxed">{{ desc }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CTA ═══════════════════════════════════════════════════════════════ -->
+<section class="py-24 bg-white">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 text-center">
+    <div class="bg-gradient-to-br from-primary to-blue-700 rounded-3xl p-12 shadow-glow text-white">
+      <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center text-4xl mx-auto mb-6">🎓</div>
+      <h2 class="font-display font-black text-3xl sm:text-4xl mb-4">
+        Prêt à moderniser vos présences ?
+      </h2>
+      <p class="text-white/80 mb-8 text-lg">
+        Rejoignez les professeurs de l'UEMF qui font confiance à EuroPresence.
+        Inscription gratuite en moins de 2 minutes.
+      </p>
+      <a href="{{ url_for('auth.register') }}" class="btn-accent text-base !py-4 !px-10">
+        🚀 Créer mon compte professeur
+      </a>
+      <p class="text-white/50 text-sm mt-4">Gratuit · Sans engagement · Sécurisé</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ════════════════════════════════════════════════════════════ -->
+<footer class="bg-slate-900 text-white py-10">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="h-8 flex items-center justify-center bg-white rounded-lg px-2">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UEMF Logo" class="h-full object-contain"/>
+      </div>
+      <div>
+        <p class="font-bold text-sm">EuroPresence</p>
+        <p class="text-slate-400 text-xs">Université Euro-Méditerranéenne de Fès</p>
+      </div>
+    </div>
+    <p class="text-slate-400 text-sm">© 2025 EuroPresence · UEMF · Tous droits réservés</p>
+    <div class="flex gap-4 text-slate-400 text-sm">
+      <a href="{{ url_for('auth.login') }}" class="hover:text-white transition-colors">Connexion</a>
+      <a href="{{ url_for('auth.register') }}" class="hover:text-white transition-colors">Inscription</a>
+    </div>
+  </div>
+</footer>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Hero countdown animation
+  let count = 10;
+  const el = document.getElementById('hero-countdown');
+  if (el) {
+    setInterval(() => {
+      count = count > 1 ? count - 1 : 10;
+      el.textContent = count + 's';
+    }, 1000);
+  }
+
+  // Smooth scroll
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+</script>
+{% endblock %}

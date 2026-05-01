@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Planning & Séances – EuroPresence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen bg-slate-50">
+  {% include "partials/sidebar_prof.html" %}
+  <div class="flex-1 flex flex-col min-w-0">
+    {% include "partials/topbar.html" %}
+    <main class="flex-1 p-4 lg:p-8 overflow-auto" x-data="{ showForm: false }">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+        <div>
+          <h2 class="font-display font-bold text-2xl text-slate-800">Planning & Séances</h2>
+          <p class="text-slate-500 text-sm mt-1">{{ sessions | length }} séance(s) au total</p>
+        </div>
+        <button @click="showForm = !showForm" class="btn-primary">+ Nouvelle Séance</button>
+      </div>
+
+      <!-- New Session Form -->
+      <div x-show="showForm" x-transition class="bg-white rounded-2xl shadow-card border border-blue-soft/40 p-6 mb-6">
+        <h3 class="font-semibold text-slate-800 mb-5">Créer une nouvelle séance</h3>
+        <form method="POST" action="{{ url_for('professor.new_session') }}">
+          <div class="grid sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Titre du cours *</label>
+              <input type="text" name="title" required placeholder="ex: Algorithmique S3" class="input-field"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Salle</label>
+              <input type="text" name="room" placeholder="ex: Amphi A, Salle 204" class="input-field"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Date et heure</label>
+              <input type="datetime-local" name="scheduled_at" class="input-field"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Durée (minutes)</label>
+              <select name="duration" class="input-field">
+                <option value="45">45 min</option>
+                <option value="90" selected>1h30</option>
+                <option value="120">2h</option>
+                <option value="180">3h</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Type de séance</label>
+              <select name="session_type" class="input-field">
+                <option value="punctual">Ponctuelle</option>
+                <option value="recurring">Récurrente (hebdomadaire)</option>
+              </select>
+            </div>
+          </div>
+          <!-- Groups selection -->
+          <div class="mb-5">
+            <label class="block text-xs font-semibold text-slate-600 mb-2">Groupes concernés</label>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {% for group in groups %}
+              <label class="flex items-center gap-2 p-3 border-2 border-blue-soft rounded-xl cursor-pointer hover:border-primary transition-colors has-[:checked]:border-primary has-[:checked]:bg-blue-soft/50">
+                <input type="checkbox" name="group_ids" value="{{ group.id }}" class="accent-primary"/>
+                <span class="text-sm font-medium text-slate-700">{{ group.name }}</span>
+                <span class="ml-auto text-xs text-slate-400">{{ group.student_count }} ét.</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if not groups %}
+            <p class="text-slate-400 text-sm">
+              Aucun groupe disponible.
+              <a href="{{ url_for('professor.new_group') }}" class="text-primary font-medium hover:underline">Créer un groupe</a>
+            </p>
+            {% endif %}
+          </div>
+          <div class="flex gap-3">
+            <button type="submit" class="btn-primary text-sm !py-2.5">Créer la séance</button>
+            <button type="button" @click="showForm = false"
+                    class="border-2 border-slate-200 text-slate-600 rounded-xl py-2.5 px-5 text-sm font-semibold hover:bg-slate-50 transition-colors">
+              Annuler
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Sessions list -->
+      <div class="bg-white rounded-2xl shadow-card border border-blue-soft/40 overflow-hidden">
+        <div class="px-6 py-4 border-b border-blue-soft/40">
+          <h3 class="font-semibold text-slate-800">Toutes les séances</h3>
+        </div>
+        {% if sessions %}
+        <div class="divide-y divide-blue-soft/40">
+          {% for s in sessions %}
+          <div class="flex items-center gap-4 px-6 py-4 hover:bg-blue-soft/20 transition-colors">
+            <!-- Status indicator -->
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl flex-shrink-0
+              {% if s.status == 'active' %}bg-green-50{% elif s.status == 'ended' %}bg-slate-100{% else %}bg-blue-soft{% endif %}">
+              {% if s.status == 'active' %}📡{% elif s.status == 'ended' %}✅{% else %}📅{% endif %}
+            </div>
+            <!-- Info -->
+            <div class="flex-1 min-w-0">
+              <p class="font-semibold text-slate-800 truncate">{{ s.title }}</p>
+              <div class="flex items-center gap-3 text-xs text-slate-400 mt-0.5 flex-wrap">
+                {% if s.scheduled_at %}
+                <span>📅 {{ s.scheduled_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                {% endif %}
+                {% if s.room %}<span>🏛 {{ s.room }}</span>{% endif %}
+                <span>⏱ {{ s.duration_minutes }} min</span>
+              </div>
+              {% if s.status == 'active' or s.status == 'ended' %}
+              <div class="flex gap-3 mt-1 text-xs font-semibold">
+                <span class="text-accent">✅ {{ s.present_count }} présents</span>
+                <span class="text-red-400">❌ {{ s.absent_count }} absents</span>
+              </div>
+              {% endif %}
+            </div>
+            <!-- Status badge -->
+            <div class="flex-shrink-0">
+              <span class="{% if s.status == 'active' %}badge-present{% elif s.status == 'ended' %}badge-absent{% else %}badge-pending{% endif %}">
+                {{ s.status | capitalize }}
+              </span>
+            </div>
+            <!-- Actions -->
+            <div class="flex items-center gap-2 flex-shrink-0">
+              {% if s.status != 'ended' %}
+              <a href="{{ url_for('professor.attendance_session', session_id=s.id) }}"
+                 class="{% if s.status == 'active' %}btn-accent{% else %}btn-primary{% endif %} text-xs !py-2 !px-4">
+                {% if s.status == 'active' %}📡 En cours{% else %}▶ Démarrer{% endif %}
+              </a>
+              {% else %}
+              <div class="flex gap-1">
+                <a href="{{ url_for('professor.export_session', session_id=s.id, fmt='excel') }}"
+                   class="w-8 h-8 flex items-center justify-center bg-green-50 text-accent rounded-lg hover:bg-green-100 transition-colors text-sm" title="Excel">📊</a>
+                <a href="{{ url_for('professor.export_session', session_id=s.id, fmt='pdf') }}"
+                   class="w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors text-sm" title="PDF">📄</a>
+              </div>
+              {% endif %}
+              <form method="POST" action="{{ url_for('professor.delete_session', session_id=s.id) }}"
+                    onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette séance et toutes ses présences ? Cette action est irréversible.');">
+                <button type="submit" class="w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors" title="Supprimer la séance">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="py-16 text-center">
+          <div class="text-5xl mb-3">📅</div>
+          <p class="text-slate-500 font-medium">Aucune séance planifiée</p>
+          <p class="text-slate-400 text-sm mt-1">Cliquez sur "Nouvelle Séance" pour commencer</p>
+        </div>
+        {% endif %}
+      </div>
+
+    </main>
+  </div>
+</div>
+{% endblock %}

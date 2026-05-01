@@ -1,0 +1,65 @@
+ Il s'agit de EuroPresence, ton système avec uniquement les rôles Professeur et Étudiant, qui inclut le QR Code Dynamique (10s), le Géofencing (80m), l'Empreinte d'appareil, et le mot de passe temporaire.
+
+Voici la procédure ultra-détaillée et exacte pour tout lancer et tout tester de zéro, juste après avoir allumé ton PC.
+
+Étape 1 : Démarrer les Services de Base (PostgreSQL & Redis)
+Ton application a besoin d'une base de données et de Redis (pour le rate-limiting et les requêtes temps réel).
+
+Assure-toi que PostgreSQL est lancé sur ton ordinateur (en général, c'est un service Windows qui se lance tout seul au démarrage. Tu peux le vérifier dans l'outil "Services" de Windows).
+Assure-toi que Redis tourne. Si tu l'as installé via Docker ou Windows, vérifie qu'il est actif. (Si tu utilises Docker pour ça, ouvre un terminal et tape docker-compose up -d redis db si tu as un fichier compose pour eux).
+Étape 2 : Lancer le Serveur de l'Application
+Ouvre VS Code ou PowerShell.
+Rends-toi dans ton dossier :
+powershell
+cd "C:\Users\hp\Desktop\app absence"
+Active l'environnement virtuel (indispensable) :
+powershell
+.\venv\Scripts\Activate
+(Tu dois voir (venv) apparaître au début de ta ligne).
+Lance l'application Flask avec SocketIO :
+powershell
+python run.py
+Tu devrais voir Running on http://0.0.0.0:5000. Laisse cette fenêtre ouverte !
+Étape 3 : Le Test du Professeur (Création de session)
+Ouvre ton navigateur (Chrome ou Edge) sur ton PC à l'adresse : http://localhost:5000
+
+Inscription / Connexion :
+Clique sur "Créer un compte" (si tu n'as pas encore de prof dans la base) et inscris-toi en tant que Professeur.
+Connecte-toi avec cet email et ce mot de passe.
+Création d'un Groupe et de l'Étudiant :
+Va dans la section Mes Groupes et crée un nouveau groupe (ex: "Master Cyber").
+Ajoute un étudiant au groupe. Pour tester facilement, ajoute ton propre deuxième email (ou un email bidon dont tu pourras récupérer le mot de passe dans le terminal/logs si le service email n'est pas actif).
+Mécanique à observer : Le système génère automatiquement un compte étudiant avec is_temp_password=True et (si configuré) envoie un email avec le mot de passe temporaire (de 12 caractères). Si l'email n'est pas envoyé, regarde dans ton terminal, le mot de passe généré y est peut-être affiché pour le debug, sinon il faudra voir dans la base de données !
+Démarrer la Présence (Le QR Code) :
+Retourne sur le Dashboard Professeur.
+Démarre une nouvelle session pour le groupe que tu viens de créer.
+Le navigateur va te demander d'autoriser la Localisation. Accepte absolument, c'est ce qui définit le centre du cercle de 80 mètres (Géofencing).
+Le QR Code géant apparaît.
+Mécanique à observer : Reste sur la page et regarde le QR code. Toutes les 10 secondes exactes, il doit clignoter/changer. C'est la rotation HMAC-SHA256 en action !
+Étape 4 : Le Test de l'Étudiant (Scan et Anti-Fraude)
+Pour simuler l'étudiant de manière réaliste, prends ton téléphone portable (ou ouvre une fenêtre de "Navigation Privée" sur ton PC).
+
+Trouver l'adresse de ton PC :
+Sur ton téléphone, tu ne peux pas taper localhost. Il faut l'adresse IP de ton PC (assure-toi que le tel et le PC sont sur le même WiFi).
+(Pour trouver l'IP : dans un autre terminal sur le PC, tape ipconfig et cherche l'adresse IPv4, ex: 192.168.1.15).
+Sur ton téléphone, tape : http://192.168.1.15:5000.
+La connexion et le mot de passe temporaire :
+Connecte-toi avec l'email de l'étudiant créé à l'étape 3 et le fameux mot de passe temporaire.
+Mécanique à observer : Le système doit bloquer l'accès au scanner et te rediriger de force vers une page "Changer mon mot de passe" (car is_temp_password est True).
+Rentre un nouveau mot de passe définitif. Tu es alors redirigé vers le Dashboard de l'étudiant.
+Le Scan du QR Code :
+Sur le téléphone, clique sur "Scanner QR".
+Le téléphone va demander l'autorisation de la Caméra ET de la Localisation GPS. Accepte les deux.
+Pointez la caméra vers l'écran de ton PC qui affiche le QR code du professeur.
+Mécanique à observer :
+Le système calcule la distance (formule Haversine). Si tu es dans la même pièce, c'est bon (< 80m).
+Le système vérifie la signature HMAC et le délai des 10 secondes.
+L'Empreinte de l'appareil (Device Fingerprint) est enregistrée dans la BDD.
+La Magie du Temps Réel :
+Dès que le téléphone dit "Présence enregistrée", lève les yeux vers l'écran de ton PC (Dashboard Professeur).
+Le nom de l'étudiant doit apparaître instantanément dans la liste verte des présents, sans que tu aies besoin de rafraîchir la page PC (grâce à SocketIO).
+Étape 5 : Tester les limites (Anti-Fraude)
+Si tu veux vérifier que ton système est invincible, essaie ceci :
+
+Test de la photo : Prends le QR code en photo avec un autre téléphone, attends 15 secondes, et essaie de le scanner. Le système doit afficher "QR Code expiré ou invalide".
+Test du faux téléphone (Device Fingerprint) : Essaie de te connecter au compte de ce même étudiant depuis un autre ordinateur ou navigateur. Le flag NEW_DEVICE sera déclenché dans les logs/BDD.
