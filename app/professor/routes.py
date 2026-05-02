@@ -13,6 +13,7 @@ from app.models.group import Group, GroupStudent
 from app.models.session import Session, Attendance, session_groups_table
 from app.models.message import Message
 from app.models.audit import AuditLog
+from app.utils.network import get_client_ip
 
 
 def professor_required(f):
@@ -371,7 +372,7 @@ def start_session(session_id):
     session.started_at = datetime.now(timezone.utc)
     session.professor_lat = data.get("lat")
     session.professor_lng = data.get("lng")
-    session.professor_ip = request.remote_addr
+    session.professor_ip = get_client_ip()
 
     # Initialiser les présences à "absent" pour tous les étudiants
     for group in session.groups:

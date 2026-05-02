@@ -13,6 +13,7 @@ from app.models.group import Group, GroupStudent
 from app.models.device import DeviceFingerprint
 from app.models.audit import AuditLog
 from app.services.qr_service import generate_qr_base64, validate_scan
+from app.utils.network import get_client_ip
 
 
 def _haversine(lat1, lng1, lat2, lng2) -> float:
@@ -70,7 +71,7 @@ def scan_qr():
     student_lat = data.get("lat")
     student_lng = data.get("lng")
     fingerprint = data.get("fingerprint", "")
-    ip = request.remote_addr
+    ip = get_client_ip()
     fraud_flags = []
 
     # ── Validation QR ──────────────────────────────────────────────────────
@@ -95,7 +96,7 @@ def scan_qr():
         return jsonify({"success": False, "error": "Présence déjà enregistrée"}), 409
 
     # ── Même Réseau (IP) ───────────────────────────────────────────────────
-    if session.professor_ip and ip != session.professor_ip:
+    if session.professor_ip and ip and ip != session.professor_ip:
         fraud_flags.append(f"WRONG_NETWORK:{ip}")
         att.status = "absent"
         att.fraud_flags = fraud_flags
