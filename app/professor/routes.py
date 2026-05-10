@@ -374,7 +374,7 @@ def start_session(session_id):
     session.professor_lng = data.get("lng")
     session.professor_ip = get_client_ip()
 
-    # Initialiser les présences à "absent" pour tous les étudiants
+    # Initialiser les présences à "pending" pour tous les étudiants
     for group in session.groups:
         for membership in group.members.filter_by(is_active=True):
             existing = Attendance.query.filter_by(
@@ -384,7 +384,7 @@ def start_session(session_id):
                     session_id=session.id,
                     student_id=membership.student_id,
                     group_id=group.id,
-                    status="absent",
+                    status="pending",
                 )
                 db.session.add(att)
 
@@ -400,6 +400,8 @@ def end_session(session_id):
     session = Session.query.filter_by(id=session_id, professor_id=prof_id).first_or_404()
     session.status = "ended"
     session.ended_at = datetime.now(timezone.utc)
+    Attendance.query.filter_by(session_id=session.id, status="pending")\
+        .update({"status": "absent"}, synchronize_session=False)
     AuditLog.log("SESSION_END", user_id=prof_id, resource_type="session", resource_id=session.id)
     db.session.commit()
     return jsonify({"success": True})

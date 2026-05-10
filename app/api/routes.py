@@ -53,7 +53,7 @@ def get_qr(session_id):
 # ── Scan étudiant ──────────────────────────────────────────────────────────
 @bp.route("/scan", methods=["POST"])
 @jwt_required(locations=["cookies", "headers"])
-@limiter.limit("10 per minute")
+@limiter.limit("300 per minute")
 def scan_qr():
     """Traite le scan QR d'un étudiant avec vérifications anti-fraude."""
     claims = get_jwt()
@@ -98,7 +98,7 @@ def scan_qr():
     # ── Même Réseau (IP) ───────────────────────────────────────────────────
     if session.professor_ip and ip and ip != session.professor_ip:
         fraud_flags.append(f"WRONG_NETWORK:{ip}")
-        att.status = "absent"
+        att.status = "pending"
         att.fraud_flags = fraud_flags
         att.ip_address = ip
         AuditLog.log("SCAN_WRONG_NETWORK", user_id=student_id, resource_id=session_id,
@@ -114,7 +114,7 @@ def scan_qr():
     if session.professor_lat and session.professor_lng:
         if student_lat is None or student_lng is None:
             fraud_flags.append("NO_LOCATION")
-            att.status = "absent"
+            att.status = "pending"
             att.fraud_flags = fraud_flags
             AuditLog.log("SCAN_NO_LOCATION", user_id=student_id, resource_id=session_id,
                          ip_address=ip, success=False)
@@ -127,7 +127,7 @@ def scan_qr():
 
         if distance > radius:
             fraud_flags.append(f"OUT_OF_GEOFENCE:{distance:.0f}m")
-            att.status = "absent"
+            att.status = "pending"
             att.fraud_flags = fraud_flags
             att.student_lat = float(student_lat)
             att.student_lng = float(student_lng)
@@ -217,11 +217,14 @@ def session_stats(session_id):
                 "scanned_at": att.scanned_at.isoformat() if att.scanned_at else None,
             })
         present = sum(1 for a in attendances if a.status == "present")
+        absent = sum(1 for a in attendances if a.status == "absent")
+        pending = sum(1 for a in attendances if a.status == "pending")
         groups_data.append({
             "id": group.id,
             "name": group.name,
             "present": present,
-            "absent": len(attendances) - present,
+            "absent": absent,
+            "pending": pending,
             "total": len(attendances),
             "students": students_data,
         })
