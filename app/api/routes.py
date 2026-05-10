@@ -68,8 +68,14 @@ def scan_qr():
 
     data = request.get_json() or {}
     qr_data = data.get("qr_data", {})
-    student_lat = data.get("lat")
-    student_lng = data.get("lng")
+    def _parse_float(value):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    student_lat = _parse_float(data.get("lat"))
+    student_lng = _parse_float(data.get("lng"))
     fingerprint = data.get("fingerprint", "")
     ip = get_client_ip()
     fraud_flags = []
@@ -96,50 +102,62 @@ def scan_qr():
         return jsonify({"success": False, "error": "Présence déjà enregistrée"}), 409
 
     # ── Même Réseau (IP) ───────────────────────────────────────────────────
-    if session.professor_ip and ip and ip != session.professor_ip:
+    wifi_mode = (current_app.config.get("WIFI_CHECK_MODE", "relaxed") or "relaxed").lower()
+    if wifi_mode not in {"strict", "relaxed", "off"}:
+        wifi_mode = "relaxed"
+
+    if wifi_mode != "off" and session.professor_ip and ip and ip != session.professor_ip:
         fraud_flags.append(f"WRONG_NETWORK:{ip}")
-        att.status = "pending"
-        att.fraud_flags = fraud_flags
-        att.ip_address = ip
-        AuditLog.log("SCAN_WRONG_NETWORK", user_id=student_id, resource_id=session_id,
-                     ip_address=ip, success=False)
-        db.session.commit()
-        return jsonify({
-            "success": False,
-            "error": "Vous devez être connecté au même réseau Wi-Fi que le professeur pour valider votre présence."
-        }), 403
-
-    # ── Géofencing ─────────────────────────────────────────────────────────
-    distance = None
-    if session.professor_lat and session.professor_lng:
-        if student_lat is None or student_lng is None:
-            fraud_flags.append("NO_LOCATION")
+        if wifi_mode == "strict":
             att.status = "pending"
             att.fraud_flags = fraud_flags
-            AuditLog.log("SCAN_NO_LOCATION", user_id=student_id, resource_id=session_id,
-                         ip_address=ip, success=False)
-            db.session.commit()
-            return jsonify({"success": False, "error": "Localisation requise pour valider la présence"}), 403
-
-        distance = _haversine(session.professor_lat, session.professor_lng,
-                               float(student_lat), float(student_lng))
-        radius = current_app.config.get("GEOFENCE_RADIUS_METERS", 80)
-
-        if distance > radius:
-            fraud_flags.append(f"OUT_OF_GEOFENCE:{distance:.0f}m")
-            att.status = "pending"
-            att.fraud_flags = fraud_flags
-            att.student_lat = float(student_lat)
-            att.student_lng = float(student_lng)
-            att.distance_meters = distance
             att.ip_address = ip
-            AuditLog.log("SCAN_OUT_OF_GEOFENCE", user_id=student_id, resource_id=session_id,
-                         ip_address=ip, extra_data={"distance": distance}, success=False)
+            AuditLog.log("SCAN_WRONG_NETWORK", user_id=student_id, resource_id=session_id,
+                         ip_address=ip, success=False)
             db.session.commit()
             return jsonify({
                 "success": False,
-                "error": f"Trop loin de la salle ({distance:.0f}m). Présence refusée."
+                "error": "Vous devez être connecté au même réseau Wi-Fi que le professeur pour valider votre présence."
             }), 403
+
+    # ── Géofencing ─────────────────────────────────────────────────────────
+    distance = None
+    geofence_mode = (current_app.config.get("GEOFENCE_MODE", "relaxed") or "relaxed").lower()
+    if geofence_mode not in {"strict", "relaxed", "off"}:
+        geofence_mode = "relaxed"
+
+    if geofence_mode != "off" and session.professor_lat and session.professor_lng:
+        if student_lat is None or student_lng is None:
+            fraud_flags.append("NO_LOCATION")
+            if geofence_mode == "strict":
+                att.status = "pending"
+                att.fraud_flags = fraud_flags
+                att.ip_address = ip
+                AuditLog.log("SCAN_NO_LOCATION", user_id=student_id, resource_id=session_id,
+                             ip_address=ip, success=False)
+                db.session.commit()
+                return jsonify({"success": False, "error": "Localisation requise pour valider la présence"}), 403
+        else:
+            distance = _haversine(session.professor_lat, session.professor_lng,
+                                  student_lat, student_lng)
+            radius = current_app.config.get("GEOFENCE_RADIUS_METERS", 80)
+
+            if distance > radius:
+                fraud_flags.append(f"OUT_OF_GEOFENCE:{distance:.0f}m")
+                if geofence_mode == "strict":
+                    att.status = "pending"
+                    att.fraud_flags = fraud_flags
+                    att.student_lat = student_lat
+                    att.student_lng = student_lng
+                    att.distance_meters = distance
+                    att.ip_address = ip
+                    AuditLog.log("SCAN_OUT_OF_GEOFENCE", user_id=student_id, resource_id=session_id,
+                                 ip_address=ip, extra_data={"distance": distance}, success=False)
+                    db.session.commit()
+                    return jsonify({
+                        "success": False,
+                        "error": f"Trop loin de la salle ({distance:.0f}m). Présence refusée."
+                    }), 403
 
     # ── Device fingerprint ─────────────────────────────────────────────────
     if fingerprint:
@@ -164,8 +182,8 @@ def scan_qr():
     # ── Enregistrement présence ────────────────────────────────────────────
     att.status = "present"
     att.scanned_at = datetime.now(timezone.utc)
-    att.student_lat = float(student_lat) if student_lat else None
-    att.student_lng = float(student_lng) if student_lng else None
+    att.student_lat = student_lat
+    att.student_lng = student_lng
     att.distance_meters = distance
     att.device_fingerprint = fingerprint
     att.ip_address = ip

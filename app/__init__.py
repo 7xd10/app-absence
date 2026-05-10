@@ -85,6 +85,8 @@ def create_app(config_name: str = "development") -> Flask:
         MAX_LOGIN_ATTEMPTS=int(os.environ.get("MAX_LOGIN_ATTEMPTS", 5)),
         PASSWORD_RESET_EXPIRY_MINUTES=int(os.environ.get("PASSWORD_RESET_EXPIRY_MINUTES", 15)),
         FRONTEND_URL=os.environ.get("FRONTEND_URL", "http://localhost:5000"),
+        WIFI_CHECK_MODE=os.environ.get("WIFI_CHECK_MODE", "relaxed"),
+        GEOFENCE_MODE=os.environ.get("GEOFENCE_MODE", "relaxed"),
         # Upload
         MAX_CONTENT_LENGTH=16 * 1024 * 1024,  # 16 MB
     )
