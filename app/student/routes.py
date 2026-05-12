@@ -53,7 +53,10 @@ def scanner():
     if student.is_temp_password:
         flash("Veuillez d'abord changer votre mot de passe temporaire.", "warning")
         return redirect(url_for("student.profile"))
-    return render_template("student/scanner.html", student=student)
+    return render_template("student/scanner.html", 
+                           student=student, 
+                           has_face_profile=bool(student.face_descriptor),
+                           face_descriptor=student.face_descriptor or "[]")
 
 
 @bp.route("/historique")

@@ -328,3 +328,18 @@ def professor_stats():
             for r in att_by_month
         ]
     })
+
+
+@bp.route('/student/face-setup', methods=['POST'])
+@jwt_required(locations=['cookies', 'headers'])
+@limiter.limit('10 per minute')
+def student_face_setup():
+    student_id = get_jwt_identity()
+    student = User.query.get_or_404(student_id)
+    data = request.json
+    if not data or 'face_descriptor' not in data or 'profile_picture' not in data:
+        return jsonify({'error': 'Données faciales manquantes.'}), 400
+    student.face_descriptor = data['face_descriptor']
+    student.profile_picture = data['profile_picture']
+    db.session.commit()
+    return jsonify({'msg': 'Profil facial configuré avec succès.'}), 200

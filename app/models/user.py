@@ -39,6 +39,8 @@ class User(db.Model):
     # Brute-force
     failed_login_attempts = db.Column(db.Integer, default=0)
     locked_until = db.Column(db.DateTime(timezone=True))
+    profile_picture = db.Column(db.Text, nullable=True) # Base64 encoded image
+    face_descriptor = db.Column(db.Text, nullable=True) # JSON string of 128 float array
 
     # ── Relations ──────────────────────────────────────────────────────────
     groups_taught = db.relationship("Group", backref="professor", lazy="dynamic",
