@@ -87,12 +87,12 @@ def create_app(config_name: str = "development") -> Flask:
         UNIVERSITY_NAME="Université Euro-Méditerranéenne de Fès",
         HMAC_SECRET=os.environ.get("HMAC_SECRET", "hmac-secret-change-me"),
         QR_ROTATION_SECONDS=int(os.environ.get("QR_ROTATION_SECONDS", 10)),
-        GEOFENCE_RADIUS_METERS=int(os.environ.get("GEOFENCE_RADIUS_METERS", 80)),
+        GEOFENCE_RADIUS_METERS=int(os.environ.get("GEOFENCE_RADIUS_METERS", 25)),
         MAX_LOGIN_ATTEMPTS=int(os.environ.get("MAX_LOGIN_ATTEMPTS", 5)),
         PASSWORD_RESET_EXPIRY_MINUTES=int(os.environ.get("PASSWORD_RESET_EXPIRY_MINUTES", 15)),
         FRONTEND_URL=os.environ.get("FRONTEND_URL", "http://localhost:5000"),
-        WIFI_CHECK_MODE=os.environ.get("WIFI_CHECK_MODE", "relaxed"),
-        GEOFENCE_MODE=os.environ.get("GEOFENCE_MODE", "relaxed"),
+        WIFI_CHECK_MODE=os.environ.get("WIFI_CHECK_MODE", "strict"),
+        GEOFENCE_MODE=os.environ.get("GEOFENCE_MODE", "strict"),
         # Upload
         MAX_CONTENT_LENGTH=16 * 1024 * 1024,  # 16 MB
     )

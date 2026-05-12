@@ -126,7 +126,7 @@ class Attendance(db.Model):
     session_id = db.Column(db.String(36), db.ForeignKey("sessions.id"), nullable=False)
     student_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
     group_id = db.Column(db.String(36), db.ForeignKey("groups.id"), nullable=False)
-    status = db.Column(db.String(20), default="absent")  # present | absent | late
+    status = db.Column(db.String(20), default="absent")  # present | absent | pending | late
     scanned_at = db.Column(db.DateTime(timezone=True))
     # Anti-fraude
     student_lat = db.Column(db.Float)

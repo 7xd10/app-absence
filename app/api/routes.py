@@ -106,6 +106,31 @@ def scan_qr():
     if wifi_mode not in {"strict", "relaxed", "off"}:
         wifi_mode = "relaxed"
 
+    if wifi_mode == "strict":
+        if not session.professor_ip:
+            fraud_flags.append("NO_PROF_NETWORK")
+            att.status = "pending"
+            att.fraud_flags = fraud_flags
+            att.ip_address = ip
+            AuditLog.log("SCAN_NO_PROF_NETWORK", user_id=student_id, resource_id=session_id,
+                         ip_address=ip, success=False)
+            db.session.commit()
+            return jsonify({
+                "success": False,
+                "error": "Le professeur doit démarrer la séance depuis son réseau Wi-Fi."
+            }), 403
+        if not ip:
+            fraud_flags.append("NO_CLIENT_IP")
+            att.status = "pending"
+            att.fraud_flags = fraud_flags
+            AuditLog.log("SCAN_NO_CLIENT_IP", user_id=student_id, resource_id=session_id,
+                         success=False)
+            db.session.commit()
+            return jsonify({
+                "success": False,
+                "error": "Impossible de vérifier le réseau. Réessayez dans quelques secondes."
+            }), 403
+
     if wifi_mode != "off" and session.professor_ip and ip and ip != session.professor_ip:
         fraud_flags.append(f"WRONG_NETWORK:{ip}")
         if wifi_mode == "strict":
@@ -125,6 +150,19 @@ def scan_qr():
     geofence_mode = (current_app.config.get("GEOFENCE_MODE", "relaxed") or "relaxed").lower()
     if geofence_mode not in {"strict", "relaxed", "off"}:
         geofence_mode = "relaxed"
+
+    if geofence_mode == "strict" and (session.professor_lat is None or session.professor_lng is None):
+        fraud_flags.append("NO_PROF_LOCATION")
+        att.status = "pending"
+        att.fraud_flags = fraud_flags
+        att.ip_address = ip
+        AuditLog.log("SCAN_NO_PROF_LOCATION", user_id=student_id, resource_id=session_id,
+                     ip_address=ip, success=False)
+        db.session.commit()
+        return jsonify({
+            "success": False,
+            "error": "Le professeur doit activer la localisation pour démarrer la séance."
+        }), 403
 
     if geofence_mode != "off" and session.professor_lat and session.professor_lng:
         if student_lat is None or student_lng is None:

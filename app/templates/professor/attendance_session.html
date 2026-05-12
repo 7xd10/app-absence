@@ -95,7 +95,7 @@
             <div class="flex items-center justify-between text-xs p-2 bg-green-50 rounded-lg">
               <span class="text-slate-600 font-medium">📍 Géofencing GPS</span>
               <span class="font-bold" :class="professorLat ? 'text-accent' : 'text-orange-400'"
-                    x-text="professorLat ? '✅ Actif (80m)' : '⚠ En attente'"></span>
+                  x-text="professorLat ? '✅ Actif ({{ config.GEOFENCE_RADIUS_METERS }}m)' : '⚠ En attente'"></span>
             </div>
             <div class="flex items-center justify-between text-xs p-2 bg-green-50 rounded-lg">
               <span class="text-slate-600 font-medium">🔐 HMAC SHA256</span>
@@ -262,12 +262,15 @@ function sessionManager() {
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.getToken()}` },
           body: JSON.stringify({ lat: this.professorLat, lng: this.professorLng })
         });
-        if (r.ok) {
+          const data = await r.json().catch(() => null);
+          if (!r.ok) {
+            alert(data?.error || 'Impossible de démarrer la séance.');
+            return;
+          }
           this.status = 'active';
           this.startQRRefresh();
           this.connectSocket();
           await this.loadStats();
-        }
       }, () => {
         // Sans GPS → démarrer quand même
         this.startWithoutGPS();
@@ -280,12 +283,15 @@ function sessionManager() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.getToken()}` },
         body: JSON.stringify({})
       });
-      if (r.ok) {
+        const data = await r.json().catch(() => null);
+        if (!r.ok) {
+          alert(data?.error || 'Impossible de démarrer la séance sans localisation.');
+          return;
+        }
         this.status = 'active';
         this.startQRRefresh();
         this.connectSocket();
         await this.loadStats();
-      }
     },
 
     async endSession() {

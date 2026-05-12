@@ -368,10 +368,28 @@ def start_session(session_id):
     session = Session.query.filter_by(id=session_id, professor_id=prof_id).first_or_404()
 
     data = request.get_json() or {}
+    geofence_mode = (current_app.config.get("GEOFENCE_MODE", "strict") or "strict").lower()
+    if geofence_mode not in {"strict", "relaxed", "off"}:
+        geofence_mode = "strict"
+
+    def _parse_float(value):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    professor_lat = _parse_float(data.get("lat"))
+    professor_lng = _parse_float(data.get("lng"))
+    if geofence_mode == "strict" and (professor_lat is None or professor_lng is None):
+        return jsonify({
+            "success": False,
+            "error": "Localisation requise pour démarrer la séance."
+        }), 400
+
     session.status = "active"
     session.started_at = datetime.now(timezone.utc)
-    session.professor_lat = data.get("lat")
-    session.professor_lng = data.get("lng")
+    session.professor_lat = professor_lat
+    session.professor_lng = professor_lng
     session.professor_ip = get_client_ip()
 
     # Initialiser les présences à "pending" pour tous les étudiants
