@@ -69,9 +69,28 @@ def _send(to: str, subject: str, html_content: str) -> bool:
             current_app.logger.info(f"[EMAIL SIMULATION] Message sauvegardé dans {filename}")
             return True
 
-        msg = Message(subject=subject, recipients=[to], html=body)
-        mail.send(msg)
-        return True
+        primary_server = current_app.config.get("MAIL_SERVER")
+        servers = [primary_server]
+        if primary_server in {"smtp.office365.com", "smtp-mail.outlook.com"}:
+          fallback = "smtp-mail.outlook.com" if primary_server == "smtp.office365.com" else "smtp.office365.com"
+          servers.append(fallback)
+
+        original_server = primary_server
+        last_error = None
+        for server in servers:
+          try:
+            current_app.config["MAIL_SERVER"] = server
+            msg = Message(subject=subject, recipients=[to], html=body)
+            mail.send(msg)
+            return True
+          except Exception as e:
+            last_error = e
+            current_app.logger.error(f"[EMAIL] Erreur envoi a {to} via {server}: {e}")
+          finally:
+            current_app.config["MAIL_SERVER"] = original_server
+        if last_error:
+          current_app.logger.error(f"[EMAIL] Envoi echoue apres retry: {last_error}")
+        return False
     except Exception as e:
         current_app.logger.error(f"[EMAIL] Erreur envoi à {to}: {e}")
         return False

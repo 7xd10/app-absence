@@ -28,6 +28,12 @@ def _is_local_redis(url: str | None) -> bool:
         return False
     return host in {"localhost", "127.0.0.1", "::1"}
 
+
+def _parse_bool(value: str | None, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+
 # ── Extensions (instanciées sans app) ──────────────────────────────────────
 db = SQLAlchemy()
 migrate = Migrate()
@@ -70,7 +76,7 @@ def create_app(config_name: str = "development") -> Flask:
         # Mail
         MAIL_SERVER=os.environ.get("MAIL_SERVER", "smtp.gmail.com"),
         MAIL_PORT=int(os.environ.get("MAIL_PORT", 587)),
-        MAIL_USE_TLS=os.environ.get("MAIL_USE_TLS", "True") == "True",
+        MAIL_USE_TLS=_parse_bool(os.environ.get("MAIL_USE_TLS"), True),
         MAIL_USERNAME=os.environ.get("MAIL_USERNAME"),
         MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD"),
         MAIL_DEFAULT_SENDER=os.environ.get("MAIL_DEFAULT_SENDER", "EuroPresence <noreply@europresence.ma>"),
