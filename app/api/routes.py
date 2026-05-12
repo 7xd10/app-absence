@@ -1,6 +1,7 @@
 """
 API routes - REST API pour le QR code, les prÃ©sences, et les stats
 """
+import json
 import math
 from datetime import datetime, timezone
 from flask import jsonify, request, current_app
@@ -334,12 +335,29 @@ def professor_stats():
 @jwt_required(locations=['cookies', 'headers'])
 @limiter.limit('10 per minute')
 def student_face_setup():
+    claims = get_jwt()
+    if claims.get("role") != "student":
+        return jsonify({"error": "Acces reserve aux etudiants"}), 403
     student_id = get_jwt_identity()
     student = User.query.get_or_404(student_id)
-    data = request.json
-    if not data or 'face_descriptor' not in data or 'profile_picture' not in data:
-        return jsonify({'error': 'Données faciales manquantes.'}), 400
-    student.face_descriptor = data['face_descriptor']
-    student.profile_picture = data['profile_picture']
+    data = request.get_json() or {}
+    face_descriptor_raw = data.get("face_descriptor")
+    if not student.profile_picture:
+        return jsonify({"error": "Photo d'identite manquante."}), 400
+    if not face_descriptor_raw:
+        return jsonify({"error": "Donnees faciales manquantes."}), 400
+
+    try:
+        if isinstance(face_descriptor_raw, str):
+            face_descriptor = json.loads(face_descriptor_raw)
+        else:
+            face_descriptor = face_descriptor_raw
+        if not isinstance(face_descriptor, list) or len(face_descriptor) != 128:
+            raise ValueError("invalid descriptor")
+        face_descriptor = [float(x) for x in face_descriptor]
+    except (TypeError, ValueError):
+        return jsonify({"error": "Descripteur facial invalide."}), 400
+
+    student.face_descriptor = json.dumps(face_descriptor)
     db.session.commit()
-    return jsonify({'msg': 'Profil facial configuré avec succès.'}), 200
+    return jsonify({"msg": "Profil facial configure avec succes."}), 200

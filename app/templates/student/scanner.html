@@ -13,7 +13,7 @@
       </div>
       <div>
         <p class="text-white font-semibold text-sm">EuroPresence</p>
-        <p class="text-white/60 text-xs">Scanner de présence</p>
+        <p class="text-white/60 text-xs">Scanner de presence</p>
       </div>
     </div>
     <a href="{{ url_for('student.dashboard') }}"
@@ -33,60 +33,108 @@
       </div>
     </div>
 
-    <!-- Scanner frame -->
-    <div class="relative w-full max-w-xs">
-      <!-- Corner decorations -->
-      <div class="absolute -top-3 -left-3 w-8 h-8 border-t-4 border-l-4 border-accent rounded-tl-xl z-10"></div>
-      <div class="absolute -top-3 -right-3 w-8 h-8 border-t-4 border-r-4 border-accent rounded-tr-xl z-10"></div>
-      <div class="absolute -bottom-3 -left-3 w-8 h-8 border-b-4 border-l-4 border-accent rounded-bl-xl z-10"></div>
-      <div class="absolute -bottom-3 -right-3 w-8 h-8 border-b-4 border-r-4 border-accent rounded-br-xl z-10"></div>
+    <!-- AI Loading -->
+    <div x-show="isAiLoading" class="text-center text-white">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
+      <p class="mt-4 text-sm">Chargement IA faciale...</p>
+    </div>
 
-      <div id="qr-reader" class="rounded-2xl overflow-hidden shadow-glow bg-black"></div>
-
-      <!-- Scan line animation -->
-      <div x-show="scanning" class="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
-        <div class="absolute w-full h-0.5 bg-accent/70 shadow-[0_0_8px_rgba(0,166,118,0.8)]"
-             style="animation: scan-line 2s linear infinite;"
-             x-ref="scanLine"></div>
+    <!-- Photo preparation -->
+    <div x-show="!isAiLoading && viewMode === 'prepare_descriptor'"
+         class="w-full max-w-sm flex flex-col items-center">
+      <div class="text-center text-white mb-4">
+        <h2 class="text-xl font-bold">Photo d'identite</h2>
+        <p class="text-sm text-white/80 mt-1">
+          Analyse de votre photo pour activer la verification faciale.
+        </p>
+      </div>
+      <div class="relative rounded-2xl overflow-hidden shadow-glow bg-black w-full max-w-xs aspect-[3/4]">
+        <img :src="profilePictureUrl" alt="Photo d'identite"
+             class="w-full h-full object-cover"/>
+      </div>
+      <p x-text="faceStatusMessage" class="mt-3 text-sm text-white font-semibold text-center"></p>
+      <div class="mt-4 flex gap-2">
+        <button @click="prepareDescriptor()" x-show="!processingDescriptor"
+                class="bg-white/20 hover:bg-white/30 text-white rounded-xl py-2.5 px-6 font-semibold transition-colors">
+          Reanalyser la photo
+        </button>
+        <a href="{{ url_for('student.profile') }}"
+           class="bg-white/10 hover:bg-white/20 text-white rounded-xl py-2.5 px-6 font-semibold transition-colors">
+          Modifier la photo
+        </a>
       </div>
     </div>
 
-    <!-- Instructions -->
-    <div x-show="!result" class="mt-8 text-center text-white/80 max-w-xs">
-      <p x-show="scanning" class="text-sm">Pointez la caméra vers le QR code affiché par votre professeur</p>
-      <p x-show="!scanning && !result" class="text-sm">Appuyez sur "Démarrer" pour activer la caméra</p>
+    <!-- Face verify -->
+    <div x-show="!isAiLoading && viewMode === 'verify_face'"
+         class="w-full max-w-sm flex flex-col items-center">
+      <div class="text-center text-white mb-4">
+        <h2 class="text-xl font-bold">Verification faciale requise</h2>
+        <p class="text-sm text-white/80 mt-1">Confirmez votre identite avant le scan QR.</p>
+      </div>
+      <div class="relative rounded-2xl overflow-hidden shadow-glow bg-black w-full max-w-xs aspect-[3/4]">
+        <video x-ref="verifyVideo" autoplay muted playsinline
+               class="w-full h-full object-cover transform scale-x-[-1]"></video>
+        <div class="absolute inset-0 border-4 border-dashed border-red-500/50 rounded-2xl pointer-events-none"
+             :class="{'border-accent bg-accent/20': faceMatchSuccess}"></div>
+      </div>
+      <p x-text="faceStatusMessage" class="mt-4 text-sm text-white font-semibold text-center h-5"></p>
+      <button @click="startFaceVerification()" x-show="!verifyingFace && !faceMatchSuccess"
+              class="mt-4 bg-white/20 hover:bg-white/30 text-white rounded-xl py-3 px-8 font-semibold transition-colors">
+        Commencer la verification
+      </button>
     </div>
 
-    <!-- Result -->
-    <div x-show="result" x-transition class="mt-6 w-full max-w-sm">
-      <div class="rounded-2xl p-6 text-center"
-           :class="result?.success ? 'bg-accent/20 border-2 border-accent' : 'bg-red-500/20 border-2 border-red-400'">
-        <div class="text-5xl mb-3" x-text="result?.success ? '✅' : '❌'"></div>
-        <p class="text-white font-bold text-lg" x-text="result?.success ? 'Présence enregistrée !' : 'Échec'"></p>
-        <p class="text-white/80 text-sm mt-1" x-text="result?.message || result?.error"></p>
-        <p x-show="result?.distance" class="text-white/60 text-xs mt-2"
-           x-text="result?.distance ? '📍 Distance : ' + Math.round(result.distance) + 'm' : ''"></p>
-        <button @click="resetScanner()" class="mt-4 bg-white/20 hover:bg-white/30 text-white rounded-xl px-6 py-2.5 text-sm font-semibold transition-colors">
-          Scanner à nouveau
+    <!-- QR Scanner -->
+    <div x-show="viewMode === 'scan_qr'" class="w-full flex-col flex items-center">
+      <div class="relative w-full max-w-xs">
+        <div class="absolute -top-3 -left-3 w-8 h-8 border-t-4 border-l-4 border-accent rounded-tl-xl z-10"></div>
+        <div class="absolute -top-3 -right-3 w-8 h-8 border-t-4 border-r-4 border-accent rounded-tr-xl z-10"></div>
+        <div class="absolute -bottom-3 -left-3 w-8 h-8 border-b-4 border-l-4 border-accent rounded-bl-xl z-10"></div>
+        <div class="absolute -bottom-3 -right-3 w-8 h-8 border-b-4 border-r-4 border-accent rounded-br-xl z-10"></div>
+
+        <div id="qr-reader" class="rounded-2xl overflow-hidden shadow-glow bg-black"></div>
+
+        <div x-show="scanning" class="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+          <div class="absolute w-full h-0.5 bg-accent/70 shadow-[0_0_8px_rgba(0,166,118,0.8)]"
+               style="animation: scan-line 2s linear infinite;"
+               x-ref="scanLine"></div>
+        </div>
+      </div>
+
+      <div x-show="!result" class="mt-8 text-center text-white/80 max-w-xs">
+        <p x-show="scanning" class="text-sm">Pointez la camera vers le QR de la session</p>
+        <p x-show="!scanning && !result" class="text-sm">Identite confirmee. Appuyez sur Scanner QR.</p>
+      </div>
+
+      <div x-show="result" x-transition class="mt-6 w-full max-w-sm">
+        <div class="rounded-2xl p-6 text-center"
+             :class="result?.success ? 'bg-accent/20 border-2 border-accent' : 'bg-red-500/20 border-2 border-red-400'">
+          <div class="text-5xl mb-3" x-text="result?.success ? '✅' : '❌'"></div>
+          <p class="text-white font-bold text-lg" x-text="result?.success ? 'Presence enregistree !' : 'Echec'"></p>
+          <p class="text-white/80 text-sm mt-1" x-text="result?.message || result?.error"></p>
+          <p x-show="result?.distance" class="text-white/60 text-xs mt-2"
+             x-text="result?.distance ? 'Distance : ' + Math.round(result.distance) + 'm' : ''"></p>
+          <button @click="resetScanner()" class="mt-4 bg-white/20 hover:bg-white/30 text-white rounded-xl px-6 py-2.5 text-sm font-semibold transition-colors">
+            Scanner a nouveau
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-8 flex gap-3">
+        <button x-show="!scanning && !result" @click="startScanner()"
+                class="btn-accent !py-3 !px-8 text-base">
+          Scanner QR
+        </button>
+        <button x-show="scanning" @click="stopScanner()"
+                class="bg-white/20 hover:bg-white/30 text-white rounded-xl py-3 px-8 font-semibold transition-colors">
+          Arreter
         </button>
       </div>
     </div>
 
-    <!-- Controls -->
-    <div class="mt-8 flex gap-3">
-      <button x-show="!scanning && !result" @click="startScanner()"
-              class="btn-accent !py-3 !px-8 text-base">
-        📷 Activer la caméra
-      </button>
-      <button x-show="scanning" @click="stopScanner()"
-              class="bg-white/20 hover:bg-white/30 text-white rounded-xl py-3 px-8 font-semibold transition-colors">
-        ⏹ Arrêter
-      </button>
-    </div>
-
-    <!-- Location status -->
     <div class="mt-5 flex items-center gap-2 text-white/60 text-xs">
-      <span x-text="locationGranted ? '📍 Localisation activée' : '⚠️ Localisation requise pour la présence'"></span>
+      <span x-text="locationGranted ? 'Localisation activee' : 'Localisation requise pour la presence'"></span>
     </div>
   </div>
 </div>
@@ -100,9 +148,24 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/face-api.min.js') }}"></script>
 <script>
 function qrScanner() {
   return {
+    isAiLoading: true,
+    viewMode: 'prepare_descriptor',
+    profilePictureUrl: {{ profile_picture_url | tojson }},
+    hasFaceProfile: {{ 'true' if has_face_profile else 'false' }},
+    storedFaceDescriptor: {{ face_descriptor | tojson }},
+    faceMatchThreshold: 0.5,
+
+    processingDescriptor: false,
+    verifyingFace: false,
+    faceMatchSuccess: false,
+    faceStatusMessage: '',
+    cameraStream: null,
+    faceDetectionInterval: null,
+
     scanning: false,
     result: null,
     locationGranted: false,
@@ -114,6 +177,158 @@ function qrScanner() {
     async init() {
       this.fingerprint = this.generateFingerprint();
       await this.requestLocation();
+
+      this.viewMode = this.hasFaceProfile ? 'verify_face' : 'prepare_descriptor';
+
+      try {
+        const modelUrl = "{{ url_for('static', filename='models') }}";
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
+          faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl),
+          faceapi.nets.faceRecognitionNet.loadFromUri(modelUrl)
+        ]);
+        this.isAiLoading = false;
+
+        if (this.viewMode === 'prepare_descriptor') {
+          await this.prepareDescriptor();
+        } else if (this.viewMode === 'verify_face') {
+          this.beginVerification();
+        }
+      } catch (err) {
+        alert('Erreur IA faciale : ' + err);
+      }
+    },
+
+    async startFaceCamera(videoElement, onReady) {
+      this.stopFaceCamera();
+      try {
+        this.cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user' }
+        });
+        videoElement.srcObject = this.cameraStream;
+        videoElement.onloadedmetadata = () => {
+          videoElement.play();
+          if (onReady) onReady(videoElement);
+        };
+      } catch (err) {
+        alert('Acces camera refuse. ' + err);
+      }
+    },
+
+    stopFaceCamera() {
+      if (this.cameraStream) {
+        this.cameraStream.getTracks().forEach(track => track.stop());
+        this.cameraStream = null;
+      }
+      if (this.faceDetectionInterval) {
+        clearInterval(this.faceDetectionInterval);
+        this.faceDetectionInterval = null;
+      }
+    },
+
+    async prepareDescriptor() {
+      if (!this.profilePictureUrl) {
+        this.faceStatusMessage = 'Photo d\'identite manquante.';
+        return;
+      }
+      this.processingDescriptor = true;
+      this.faceStatusMessage = 'Analyse de la photo...';
+
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        const loaded = new Promise((resolve, reject) => {
+          img.onload = () => resolve(true);
+          img.onerror = () => reject(new Error('load_error'));
+        });
+        img.src = this.profilePictureUrl;
+        await loaded;
+
+        const detection = await faceapi.detectSingleFace(
+          img,
+          new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 })
+        ).withFaceLandmarks().withFaceDescriptor();
+
+        if (!detection) {
+          this.faceStatusMessage = 'Aucun visage detecte. Modifiez la photo.';
+          this.processingDescriptor = false;
+          return;
+        }
+
+        const descriptorArray = Array.from(detection.descriptor);
+        const response = await fetch('/api/student/face-setup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.getToken()}`
+          },
+          body: JSON.stringify({
+            face_descriptor: descriptorArray
+          })
+        });
+
+        if (response.ok) {
+          this.storedFaceDescriptor = descriptorArray;
+          this.hasFaceProfile = true;
+          this.faceStatusMessage = 'Photo validee. Verification en cours...';
+          this.viewMode = 'verify_face';
+          this.beginVerification();
+        } else {
+          const errData = await response.json();
+          this.faceStatusMessage = 'Erreur: ' + (errData.error || 'Inconnue');
+        }
+      } catch (err) {
+        this.faceStatusMessage = 'Erreur traitement photo.';
+      } finally {
+        this.processingDescriptor = false;
+      }
+    },
+
+    beginVerification() {
+      this.startFaceCamera(this.$refs.verifyVideo, () => {});
+      this.startContinuousVerification();
+    },
+
+    startFaceVerification() {
+      this.startContinuousVerification();
+    },
+
+    startContinuousVerification() {
+      if (this.verifyingFace) return;
+      if (!this.storedFaceDescriptor || this.storedFaceDescriptor.length !== 128) {
+        this.faceStatusMessage = 'Descripteur facial manquant.';
+        return;
+      }
+      this.verifyingFace = true;
+      this.faceStatusMessage = 'Analyse du visage...';
+      const videoEl = this.$refs.verifyVideo;
+
+      this.faceDetectionInterval = setInterval(async () => {
+        if (!this.verifyingFace || this.faceMatchSuccess) return;
+        const detection = await faceapi.detectSingleFace(
+          videoEl,
+          new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 })
+        ).withFaceLandmarks().withFaceDescriptor();
+
+        if (detection) {
+          const stored = new Float32Array(this.storedFaceDescriptor);
+          const distance = faceapi.euclideanDistance(detection.descriptor, stored);
+
+          if (distance <= this.faceMatchThreshold) {
+            this.faceMatchSuccess = true;
+            this.verifyingFace = false;
+            this.faceStatusMessage = 'Identite validee.';
+            setTimeout(() => {
+              this.stopFaceCamera();
+              this.viewMode = 'scan_qr';
+            }, 1200);
+          } else {
+            this.faceStatusMessage = 'Visage non reconnu (' + distance.toFixed(2) + ')';
+          }
+        } else {
+          this.faceStatusMessage = 'Placez votre visage au centre...';
+        }
+      }, 600);
     },
 
     generateFingerprint() {
@@ -143,15 +358,15 @@ function qrScanner() {
     startScanner() {
       this.scanning = true;
       this.result = null;
-      this.html5QrCode = new Html5Qrcode("qr-reader");
+      this.html5QrCode = new Html5Qrcode('qr-reader');
       this.html5QrCode.start(
-        { facingMode: "environment" },
+        { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 240, height: 240 } },
         (decodedText) => this.onScanSuccess(decodedText),
         () => {}
       ).catch(err => {
         this.scanning = false;
-        alert('Erreur caméra : ' + err);
+        alert('Erreur camera : ' + err);
       });
     },
 
@@ -186,8 +401,8 @@ function qrScanner() {
           })
         });
         this.result = await r.json();
-      } catch(e) {
-        this.result = { success: false, error: 'Erreur réseau. Réessayez.' };
+      } catch (e) {
+        this.result = { success: false, error: 'Erreur reseau. Reessayez.' };
       }
     },
 
