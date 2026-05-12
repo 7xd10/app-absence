@@ -86,11 +86,13 @@ def create_app(config_name: str = "development") -> Flask:
         JWT_COOKIE_CSRF_PROTECT=False,
         # Mail
         MAIL_SERVER=os.environ.get("MAIL_SERVER", "smtp.gmail.com"),
-        MAIL_PORT=int(os.environ.get("MAIL_PORT", 587)),
-        MAIL_USE_TLS=_parse_bool(os.environ.get("MAIL_USE_TLS"), True),
+        MAIL_PORT=int(os.environ.get("MAIL_PORT", 465)),
+        MAIL_USE_TLS=_parse_bool(os.environ.get("MAIL_USE_TLS"), False),
+        MAIL_USE_SSL=_parse_bool(os.environ.get("MAIL_USE_SSL"), True),
         MAIL_USERNAME=os.environ.get("MAIL_USERNAME"),
         MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD"),
         MAIL_DEFAULT_SENDER=os.environ.get("MAIL_DEFAULT_SENDER", "EuroPresence <noreply@europresence.ma>"),
+        MAIL_TIMEOUT=int(os.environ.get("MAIL_TIMEOUT", 30)),
         # Redis / Limiter
         RATELIMIT_STORAGE_URI=ratelimit_storage_uri,
         # App
