@@ -43,6 +43,19 @@ mail = Mail()
 socketio = SocketIO()
 limiter = Limiter(key_func=get_remote_address)
 
+def _fix_db_url(url: str | None) -> str:
+    """Corrige l'URL PostgreSQL pour SQLAlchemy (Railway fournit postgres://)."""
+    if not url:
+        return "sqlite:///europresence.db"
+    # Railway fournit parfois 'postgres://' au lieu de 'postgresql://'
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    # Assure la compatibilité psycopg2
+    if url.startswith("postgresql://") and "+" not in url.split("://")[0]:
+        url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    return url
+
+
 def create_app(config_name: str = "development") -> Flask:
     """Application factory."""
     app = Flask(__name__)
@@ -56,12 +69,10 @@ def create_app(config_name: str = "development") -> Flask:
             ratelimit_storage_uri = redis_url
 
     # ── Configuration ──────────────────────────────────────────────────────
+    db_url = _fix_db_url(os.environ.get("DATABASE_URL"))
     app.config.update(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret-change-me"),
-        SQLALCHEMY_DATABASE_URI=os.environ.get(
-            "DATABASE_URL",
-            "sqlite:///europresence.db"
-        ),
+        SQLALCHEMY_DATABASE_URI=db_url,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SQLALCHEMY_ENGINE_OPTIONS={
             "pool_pre_ping": True,
